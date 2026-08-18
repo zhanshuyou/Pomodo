@@ -1,5 +1,7 @@
 # Pomodo
 
+[![CI](https://github.com/zhanshuyou/Pomodo/actions/workflows/ci.yml/badge.svg)](https://github.com/zhanshuyou/Pomodo/actions/workflows/ci.yml)
+
 A cross-platform desktop app built with [Tauri 2](https://tauri.app), Svelte, TypeScript and Vite.
 
 ## Stack
@@ -56,6 +58,17 @@ and `npm run check` for Svelte/TypeScript diagnostics.
 ## Recommended IDE setup
 
 [VS Code](https://code.visualstudio.com/) with the [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode), [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) and [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) extensions.
+
+## CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push to
+`main` and on every pull request:
+
+- **Frontend** — `npm run check` (svelte-check + tsc) and `npm run build`
+- **Rust** — `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`
+- **Tauri build** — `npm run tauri build -- --no-bundle` on Linux, macOS and
+  Windows, which compiles the release binary against the built frontend
+  without producing installers
 
 ## License
 
