@@ -1,20 +1,20 @@
 # Pomodo
 
-A cross-platform desktop app built with [Tauri 2](https://tauri.app), React, TypeScript and Vite.
+A cross-platform desktop app built with [Tauri 2](https://tauri.app), Svelte, TypeScript and Vite.
 
 ## Stack
 
 | Layer     | Tech                                  |
 | --------- | ------------------------------------- |
 | Shell     | Tauri 2 (Rust)                        |
-| Frontend  | React 19 + TypeScript, bundled by Vite |
+| Frontend  | Svelte 5 + TypeScript, bundled by Vite |
 | Dev URL   | `http://localhost:1420`               |
 
 ## Layout
 
 ```
 ├── index.html          # Vite entry point
-├── src/                # React frontend
+├── src/                # Svelte frontend
 ├── src-tauri/          # Rust backend
 │   ├── src/main.rs     # Binary entry point
 │   ├── src/lib.rs      # App setup + #[tauri::command] handlers
@@ -50,11 +50,12 @@ npm run tauri dev     # run the desktop app with hot reload
 npm run tauri build   # produce platform installers in src-tauri/target/release/bundle
 ```
 
-Frontend-only commands are also available: `npm run dev`, `npm run build`, `npm run preview`.
+Frontend-only commands are also available: `npm run dev`, `npm run build`, `npm run preview`,
+and `npm run check` for Svelte/TypeScript diagnostics.
 
 ## Recommended IDE setup
 
-[VS Code](https://code.visualstudio.com/) with the [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) and [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) extensions.
+[VS Code](https://code.visualstudio.com/) with the [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode), [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) and [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) extensions.
 
 ## License
 
