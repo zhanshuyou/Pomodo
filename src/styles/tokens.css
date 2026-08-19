@@ -1,0 +1,37 @@
+:root {
+  --bg: oklch(0.95 0.008 70);
+  --card: oklch(0.99 0.004 80);
+  --surface-2: oklch(0.965 0.006 70);
+  --ink: oklch(0.24 0.012 60);
+  --dim: oklch(0.5 0.012 60);
+  --faint: oklch(0.6 0.012 60);
+  --line: oklch(0.88 0.008 70);
+  --line-soft: oklch(0.93 0.008 70);
+  --track: oklch(0.9 0.008 70);
+  --good: oklch(0.55 0.11 145);
+
+  --accent: oklch(0.63 0.13 40);
+
+  --font-ui: "IBM Plex Sans", "PingFang SC", "Helvetica Neue", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-pixel: "Silkscreen", "IBM Plex Mono", monospace;
+
+  --radius-window: 16px;
+  --radius-card: 13px;
+  --radius-control: 11px;
+  --radius-chip: 9px;
+
+  --inset-press: inset 0 -3px 0 oklch(0.24 0.012 60 / 0.18);
+  --shadow-window: 0 28px 56px -28px oklch(0.24 0.012 60 / 0.45);
+  --shadow-bubble: 0 8px 20px -12px oklch(0.24 0.012 60 / 0.5);
+}
+
+:root[data-accent="blue"] {
+  --accent: oklch(0.58 0.11 250);
+}
+:root[data-accent="green"] {
+  --accent: oklch(0.58 0.12 150);
+}
+:root[data-accent="magenta"] {
+  --accent: oklch(0.55 0.14 320);
+}
