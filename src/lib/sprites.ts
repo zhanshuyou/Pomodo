@@ -221,9 +221,11 @@ export function paletteFor(body: string): Record<string, Rgba> {
 export function rasterize(
   map: readonly string[],
   body: string,
-): Uint8ClampedArray {
+): Uint8ClampedArray<ArrayBuffer> {
   const pal = paletteFor(body);
-  const buf = new Uint8ClampedArray(SPRITE_SIZE * SPRITE_SIZE * 4);
+  const buf = new Uint8ClampedArray(
+    new ArrayBuffer(SPRITE_SIZE * SPRITE_SIZE * 4),
+  );
   for (let y = 0; y < SPRITE_SIZE; y++) {
     const row = map[y] ?? "";
     for (let x = 0; x < SPRITE_SIZE; x++) {
