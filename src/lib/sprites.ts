@@ -213,3 +213,28 @@ export function paletteFor(body: string): Record<string, Rgba> {
   paletteCache.set(body, pal);
   return pal;
 }
+
+/**
+ * Rasterise a character map into a 16x16 RGBA buffer.
+ * '.' and any unknown character become fully transparent.
+ */
+export function rasterize(
+  map: readonly string[],
+  body: string,
+): Uint8ClampedArray {
+  const pal = paletteFor(body);
+  const buf = new Uint8ClampedArray(SPRITE_SIZE * SPRITE_SIZE * 4);
+  for (let y = 0; y < SPRITE_SIZE; y++) {
+    const row = map[y] ?? "";
+    for (let x = 0; x < SPRITE_SIZE; x++) {
+      const px = pal[row[x]];
+      if (!px) continue;
+      const i = (y * SPRITE_SIZE + x) * 4;
+      buf[i] = px[0];
+      buf[i + 1] = px[1];
+      buf[i + 2] = px[2];
+      buf[i + 3] = px[3];
+    }
+  }
+  return buf;
+}

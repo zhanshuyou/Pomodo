@@ -5,6 +5,7 @@ import {
   SPRITE_SIZE,
   oklchToRgba,
   paletteFor,
+  rasterize,
   shadeOf,
 } from "./sprites";
 
@@ -107,5 +108,45 @@ describe("paletteFor", () => {
     expect(pal.e).toEqual(oklchToRgba("oklch(0.2 0.015 60)"));
     expect(pal.w).toEqual(oklchToRgba("oklch(0.98 0.006 80)"));
     expect(pal.p).toEqual(oklchToRgba("oklch(0.78 0.11 20)"));
+  });
+});
+
+describe("rasterize", () => {
+  const mochi = PETS[0];
+
+  it("produces a 16x16 RGBA buffer", () => {
+    expect(rasterize(mochi.map, mochi.body)).toHaveLength(
+      SPRITE_SIZE * SPRITE_SIZE * 4,
+    );
+  });
+
+  it("leaves '.' pixels fully transparent", () => {
+    const buf = rasterize(mochi.map, mochi.body);
+    // row 0 of CAT is all dots
+    for (let x = 0; x < SPRITE_SIZE; x++) {
+      expect(buf[x * 4 + 3]).toBe(0);
+    }
+  });
+
+  it("writes the outline colour at a known 'o' pixel", () => {
+    const buf = rasterize(mochi.map, mochi.body);
+    // CAT row 1 is "..oo........oo..", so (2,1) is 'o'
+    const i = (1 * SPRITE_SIZE + 2) * 4;
+    const pal = paletteFor(mochi.body);
+    expect([buf[i], buf[i + 1], buf[i + 2], buf[i + 3]]).toEqual(pal.o);
+  });
+
+  it("writes the body colour at a known 'b' pixel", () => {
+    const buf = rasterize(mochi.map, mochi.body);
+    // CAT row 5 is "..obbbbbbbbbbo..", so (3,5) is 'b'
+    const i = (5 * SPRITE_SIZE + 3) * 4;
+    const pal = paletteFor(mochi.body);
+    expect([buf[i], buf[i + 1], buf[i + 2], buf[i + 3]]).toEqual(pal.b);
+  });
+
+  it("recolours the same map when given a different body", () => {
+    const a = rasterize(mochi.map, mochi.body);
+    const b = rasterize(mochi.map, LOCKED_BODY);
+    expect(a).not.toEqual(b);
   });
 });
