@@ -508,6 +508,13 @@ must stay green after every plan.
 | Font licensing and CJK subset size | IBM Plex and Silkscreen are OFL; ship the Latin subset only and let `PingFang SC` cover CJK |
 | Always-on-top pet costing battery | Redraw only on state change; pause animation when the pet is occluded or on battery saver |
 
+### 11.1 Open question — 迷你模式
+
+Artboard 01 shows a `迷你模式` / `退出迷你模式` button and §6.5 lists a `toggle_mini_mode`
+command, but the design never shows the mini window itself. Plan 3 wires the button's label
+only. The mini state needs a design before it can be built; the desktop-pet window from
+plan 7 is the obvious host for it.
+
 ## 12. Implementation plan sequence
 
 Seven plan documents, executed one at a time. Plans 1 and 2 are independent; 3 depends on
