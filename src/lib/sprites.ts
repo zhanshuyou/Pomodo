@@ -50,3 +50,166 @@ export function shadeOf(body: string): string {
   const dimmed = Math.max(0, Math.round((l - 0.12) * 1000) / 1000);
   return `oklch(${dimmed} ${c} ${h})`;
 }
+
+export const SPRITE_SIZE = 16;
+
+const CAT = [
+  "................",
+  "..oo........oo..",
+  "..obo......obo..",
+  "..obbo....obbo..",
+  "..obbboooobbbo..",
+  "..obbbbbbbbbbo..",
+  ".obbbbbbbbbbbbo.",
+  ".obbebbbbbbebbo.",
+  ".obbbbbbbbbbbbo.",
+  ".obbpbwwwwbpbbo.",
+  ".obbbbwwwwbbbbo.",
+  ".obbbbbwwbbbbbo.",
+  "..obbbbbbbbbbo..",
+  "..obboooooobbo..",
+  "..oo.o....o.oo..",
+  "................",
+] as const;
+
+const BIRD = [
+  "................",
+  ".....oooo.......",
+  "....obbbbo......",
+  "...obbbbbbo.....",
+  "...obebbbbo.oo..",
+  "...obbbbbboobo..",
+  "..obbbbbbbbbbo..",
+  "..obbbbbbbbbbo..",
+  ".obbbbwwwwbbbo..",
+  ".obbbwwwwwwbbo..",
+  ".obbbbwwwwbbbo..",
+  "..obbbbbbbbbo...",
+  "...obbbbbbbo....",
+  "....oo.oo.......",
+  "....p...p.......",
+  "................",
+] as const;
+
+const FROG = [
+  "................",
+  "..oo......oo....",
+  ".obwo....obwo...",
+  ".obeo....obeo...",
+  ".obbbooooobbbo..",
+  "obbbbbbbbbbbbbo.",
+  "obbbbbbbbbbbbbo.",
+  "obbboowwwwoobbo.",
+  "obbbbbbbbbbbbbo.",
+  ".obbbbbbbbbbbo..",
+  "..obbbbbbbbbo...",
+  "..obboooooobo...",
+  ".ooo......ooo...",
+  "op.o......o.po..",
+  "................",
+  "................",
+] as const;
+
+const GHOST = [
+  "................",
+  ".....oooo.......",
+  "...oobbbboo.....",
+  "..obbbbbbbbo....",
+  "..obbbbbbbbo....",
+  ".obbebbbbebbo...",
+  ".obbbbbbbbbbo...",
+  ".obbbbwwwwbbo...",
+  ".obbbbbbbbbbo...",
+  ".obbbbbbbbbbo...",
+  ".obbbbbbbbbbo...",
+  ".obbbbbbbbbbo...",
+  ".obobbobbobbo...",
+  ".o.oo.oo.oo.o...",
+  "................",
+  "................",
+] as const;
+
+const BEAR = [
+  "................",
+  ".ooo......ooo...",
+  "obbbo....obbbo..",
+  "obpbo....obpbo..",
+  ".obbboooobbbo...",
+  ".obbbbbbbbbbo...",
+  "obbbbbbbbbbbbo..",
+  "obbebbbbbbebbo..",
+  "obbbbbbbbbbbbo..",
+  "obbbowwwwobbbo..",
+  "obbbwwwwwwbbbo..",
+  ".obbbwwwwbbbo...",
+  ".obbbbbbbbbbo...",
+  "..oboooooobo....",
+  "..o.o....o.o....",
+  "................",
+] as const;
+
+const SLIME = [
+  "................",
+  "................",
+  ".....oooo.......",
+  "...oobbbboo.....",
+  "..obbbbbbbbo....",
+  ".obbbbbbbbbbo...",
+  ".obbebbbbebbo...",
+  "obbbbbbbbbbbbo..",
+  "obbbbwwwwbbbbo..",
+  "obbbbbwwbbbbbo..",
+  "obbbbbbbbbbbbo..",
+  "obbbbbbbbbbbbo..",
+  ".obbbbbbbbbbo...",
+  "..oooooooooo....",
+  "................",
+  "................",
+] as const;
+
+export type PetId = 0 | 1 | 2 | 3 | 4 | 5;
+
+export interface PetDef {
+  id: PetId;
+  name: string;
+  map: readonly string[];
+  body: string;
+  unlockedByDefault: boolean;
+}
+
+export const PETS: readonly PetDef[] = [
+  { id: 0, name: "MOCHI", map: CAT, body: "oklch(0.84 0.09 80)", unlockedByDefault: true },
+  { id: 1, name: "PUDDING", map: SLIME, body: "oklch(0.82 0.08 195)", unlockedByDefault: true },
+  { id: 2, name: "TOFU", map: FROG, body: "oklch(0.82 0.1 145)", unlockedByDefault: true },
+  { id: 3, name: "BEAN", map: BEAR, body: "oklch(0.72 0.06 55)", unlockedByDefault: true },
+  { id: 4, name: "PEEP", map: BIRD, body: "oklch(0.85 0.11 95)", unlockedByDefault: false },
+  { id: 5, name: "BOO", map: GHOST, body: "oklch(0.9 0.02 280)", unlockedByDefault: false },
+];
+
+/** Body colour used to render a still-locked pet in the picker. */
+export const LOCKED_BODY = "oklch(0.86 0.006 70)";
+
+const FIXED = {
+  o: "oklch(0.26 0.02 60)",
+  e: "oklch(0.2 0.015 60)",
+  w: "oklch(0.98 0.006 80)",
+  p: "oklch(0.78 0.11 20)",
+} as const;
+
+const paletteCache = new Map<string, Record<string, Rgba>>();
+
+/** Resolve the seven sprite palette entries for one body colour. Memoised. */
+export function paletteFor(body: string): Record<string, Rgba> {
+  const hit = paletteCache.get(body);
+  if (hit) return hit;
+  const pal: Record<string, Rgba> = {
+    o: oklchToRgba(FIXED.o),
+    e: oklchToRgba(FIXED.e),
+    w: oklchToRgba(FIXED.w),
+    p: oklchToRgba(FIXED.p),
+    b: oklchToRgba(body),
+    s: oklchToRgba(shadeOf(body)),
+  };
+  paletteCache.set(body, pal);
+  return pal;
+}

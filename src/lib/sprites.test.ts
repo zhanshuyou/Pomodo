@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { oklchToRgba, shadeOf } from "./sprites";
+import {
+  LOCKED_BODY,
+  PETS,
+  SPRITE_SIZE,
+  oklchToRgba,
+  paletteFor,
+  shadeOf,
+} from "./sprites";
 
 describe("oklchToRgba", () => {
   it("converts pure white", () => {
@@ -43,5 +50,62 @@ describe("shadeOf", () => {
 
   it("never goes below zero lightness", () => {
     expect(shadeOf("oklch(0.05 0.02 60)")).toBe("oklch(0 0.02 60)");
+  });
+});
+
+describe("PETS", () => {
+  it("has the six pets from the spec in order", () => {
+    expect(PETS.map((p) => p.name)).toEqual([
+      "MOCHI",
+      "PUDDING",
+      "TOFU",
+      "BEAN",
+      "PEEP",
+      "BOO",
+    ]);
+  });
+
+  it("locks only PEEP and BOO by default", () => {
+    expect(PETS.filter((p) => !p.unlockedByDefault).map((p) => p.name)).toEqual([
+      "PEEP",
+      "BOO",
+    ]);
+  });
+
+  it("gives every pet a square 16x16 map", () => {
+    for (const pet of PETS) {
+      expect(pet.map, pet.name).toHaveLength(SPRITE_SIZE);
+      for (const row of pet.map) {
+        expect(row, `${pet.name}: ${row}`).toHaveLength(SPRITE_SIZE);
+      }
+    }
+  });
+
+  it("uses only known palette characters", () => {
+    for (const pet of PETS) {
+      for (const row of pet.map) {
+        expect(row).toMatch(/^[.osbewp]+$/);
+      }
+    }
+  });
+
+  it("assigns each pet a distinct id matching its index", () => {
+    expect(PETS.map((p) => p.id)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+});
+
+describe("paletteFor", () => {
+  it("maps b to the body colour and s to its shade", () => {
+    const pal = paletteFor("oklch(0.84 0.09 80)");
+    expect(pal.b).toEqual(oklchToRgba("oklch(0.84 0.09 80)"));
+    expect(pal.s).toEqual(oklchToRgba("oklch(0.72 0.09 80)"));
+  });
+
+  it("uses the fixed outline, eye, white and blush colours", () => {
+    const pal = paletteFor(LOCKED_BODY);
+    expect(pal.o).toEqual(oklchToRgba("oklch(0.26 0.02 60)"));
+    expect(pal.e).toEqual(oklchToRgba("oklch(0.2 0.015 60)"));
+    expect(pal.w).toEqual(oklchToRgba("oklch(0.98 0.006 80)"));
+    expect(pal.p).toEqual(oklchToRgba("oklch(0.78 0.11 20)"));
   });
 });
