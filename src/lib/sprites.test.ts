@@ -150,3 +150,41 @@ describe("rasterize", () => {
     expect(a).not.toEqual(b);
   });
 });
+
+describe("rasterize round-trip", () => {
+  /** Reconstruct a coarse character map from a rendered buffer. */
+  function toAscii(buf: Uint8ClampedArray, body: string): string[] {
+    const pal = paletteFor(body);
+    const rows: string[] = [];
+    for (let y = 0; y < SPRITE_SIZE; y++) {
+      let row = "";
+      for (let x = 0; x < SPRITE_SIZE; x++) {
+        const i = (y * SPRITE_SIZE + x) * 4;
+        const px = [buf[i], buf[i + 1], buf[i + 2], buf[i + 3]];
+        if (px[3] === 0) {
+          row += ".";
+          continue;
+        }
+        const hit = Object.entries(pal).find(([, v]) => v.every((c, k) => c === px[k]));
+        row += hit ? hit[0] : "?";
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  it("puts every pixel of every pet exactly where its map says", () => {
+    for (const pet of PETS) {
+      const back = toAscii(rasterize(pet.map, pet.body), pet.body);
+      expect(back, pet.name).toEqual([...pet.map]);
+    }
+  });
+
+  it("renders MOCHI's face with eyes, blush and belly in the right places", () => {
+    const back = toAscii(rasterize(PETS[0].map, PETS[0].body), PETS[0].body);
+    // Row 7 carries the two eyes, row 9 the blush either side of the belly.
+    expect(back[7]).toBe(".obbebbbbbbebbo.");
+    expect(back[9]).toBe(".obbpbwwwwbpbbo.");
+    expect(back[9].indexOf("p")).toBeLessThan(back[9].indexOf("w"));
+  });
+});
