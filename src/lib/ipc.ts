@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type UnlistenFn, listen } from "@tauri-apps/api/event";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
 import type { Phase } from "./copy";
 import type { Accent, Tone } from "./theme";
@@ -42,6 +43,8 @@ export interface Model {
   tasks: Task[];
   settings: Settings;
   nextTaskId: number;
+  stats: { sessions: unknown[]; bestStreak: number };
+  pet: PetState;
 }
 
 export interface TickPayload {
@@ -88,3 +91,57 @@ export const onPhase = (cb: (p: PhaseChange) => void): Promise<UnlistenFn> =>
   listen<PhaseChange>("timer:phase", (e) => cb(e.payload));
 export const onChanged = (cb: (p: ChangedPayload) => void): Promise<UnlistenFn> =>
   listen<ChangedPayload>("model:changed", (e) => cb(e.payload));
+
+export interface DayBar {
+  label: string;
+  count: number;
+}
+
+export interface StatsSummary {
+  weekFocusSecs: number;
+  weekDeltaPct: number;
+  pomodoros: number;
+  dailyAverage: number;
+  interruptions: number;
+  interruptionsDelta: number;
+  streak: number;
+  bestStreak: number;
+  bars: DayBar[];
+}
+
+export interface CustomPet {
+  focus: string | null;
+  rest: string | null;
+  nag: string | null;
+}
+
+export interface PetState {
+  selected: number;
+  lifetimePomodoros: number;
+  custom: CustomPet;
+  useCustom: boolean;
+}
+
+export type PetSlot = "focus" | "rest" | "nag";
+
+export const statsSummary = () => invoke<StatsSummary>("stats_summary");
+export const selectPet = (id: number) => invoke<boolean>("select_pet", { id });
+export const setUseCustomPet = (value: boolean) =>
+  invoke<void>("set_use_custom_pet", { value });
+export const importCustomPet = (slot: PetSlot, source: string) =>
+  invoke<string>("import_custom_pet", { slot, source });
+export const clearCustomPet = (slot: PetSlot) =>
+  invoke<void>("clear_custom_pet", { slot });
+
+/** Ask the user for a sprite file. Returns null when they cancel. */
+export async function pickPetImage(): Promise<string | null> {
+  const picked = await openDialog({
+    multiple: false,
+    directory: false,
+    filters: [{ name: "宠物图片", extensions: ["png", "gif", "apng", "webp"] }],
+  });
+  return typeof picked === "string" ? picked : null;
+}
+
+/** Convert a stored absolute path into something an <img src> can load. */
+export { convertFileSrc } from "@tauri-apps/api/core";
