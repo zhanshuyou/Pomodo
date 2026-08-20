@@ -21,6 +21,19 @@
         "resizable": true,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true
+      },
+      {
+        "label": "prefs",
+        "url": "prefs.html",
+        "title": "\u8bbe\u7f6e",
+        "width": 1180,
+        "height": 640,
+        "minWidth": 1180,
+        "minHeight": 606,
+        "visible": false,
+        "resizable": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
       }
     ],
     "security": {
