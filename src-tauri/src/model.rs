@@ -66,6 +66,14 @@ pub struct Settings {
     pub long_break_secs: u32,
     pub rounds_per_cycle: u8,
     pub pet_flags: PetFlags,
+    /// The user can dismiss the desktop pet; it must stay gone across ticks
+    /// and restarts until they ask for it back.
+    #[serde(default = "yes")]
+    pub pet_visible: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 impl Default for Settings {
@@ -78,6 +86,7 @@ impl Default for Settings {
             long_break_secs: 900,
             rounds_per_cycle: 4,
             pet_flags: PetFlags::default(),
+            pet_visible: true,
         }
     }
 }

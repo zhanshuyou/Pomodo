@@ -36,6 +36,7 @@ export interface Settings {
   longBreakSecs: number;
   roundsPerCycle: number;
   petFlags: PetFlags;
+  petVisible: boolean;
 }
 
 export interface Model {
@@ -251,6 +252,8 @@ export const setPetPlacement = (x: number, y: number) =>
 export const showPet = () => invoke<void>("show_pet");
 export const hidePet = () => invoke<void>("hide_pet");
 export const hideBubble = () => invoke<void>("hide_bubble");
+export const setPetVisible = (value: boolean) =>
+  invoke<void>("set_pet_visible", { value });
 export const dismissOverlay = (id: number, acknowledged: boolean) =>
   invoke<void>("dismiss_overlay", { id, acknowledged });
 

@@ -1,7 +1,7 @@
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager};
 
@@ -39,9 +39,23 @@ fn blur_just_closed_it() -> bool {
 
 pub fn build(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "打开 Pomodo", true, None::<&str>)?;
+    // The pet can be dismissed from its own close button, so the tray is the
+    // reliable way back — it is the one surface that is always reachable.
+    let pet_visible = app
+        .try_state::<crate::state::AppState>()
+        .map(|s| s.with(|m| m.settings.pet_visible))
+        .unwrap_or(true);
+    let pet = CheckMenuItem::with_id(
+        app,
+        "toggle_pet",
+        "桌面宠物",
+        true,
+        pet_visible,
+        None::<&str>,
+    )?;
     let prefs = MenuItem::with_id(app, "prefs", "设置…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出 Pomodo", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &prefs, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &pet, &prefs, &quit])?;
 
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(app.default_window_icon().cloned().expect("bundled icon"))
@@ -52,6 +66,19 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => {
                 let _ = windows::show_main(app);
+            }
+            "toggle_pet" => {
+                let Some(state) = app.try_state::<crate::state::AppState>() else {
+                    return;
+                };
+                let next = state.with(|m| !m.settings.pet_visible);
+                state.with(|m| m.settings.pet_visible = next);
+                state.flush();
+                if next {
+                    let _ = windows::ensure_pet(app);
+                } else {
+                    windows::hide_pet(app);
+                }
             }
             "prefs" => {
                 let _ = windows::show_prefs(app);
