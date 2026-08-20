@@ -1,3 +1,3 @@
 <script lang="ts"></script>
 
-<main>Momo · tray</main>
+<main>Pomodo · tray</main>

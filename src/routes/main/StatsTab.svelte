@@ -93,7 +93,7 @@
       </span>
     </div>
     <div class="insight">
-      <span class="ititle">Momo 的评价</span>
+      <span class="ititle">Pomodo 的评价</span>
       <span class="ibody">{petVerdict(app.tone)}</span>
     </div>
   </div>

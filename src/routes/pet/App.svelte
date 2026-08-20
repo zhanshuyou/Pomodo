@@ -1,3 +1,3 @@
 <script lang="ts"></script>
 
-<main>Momo · pet</main>
+<main>Pomodo · pet</main>

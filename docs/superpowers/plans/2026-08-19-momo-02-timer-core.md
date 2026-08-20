@@ -1,8 +1,8 @@
-# Momo 02 — Rust Timer Core Implementation Plan
+# Pomodo 02 — Rust Timer Core Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Rust model that owns Momo's timer, tasks and settings — a tested state machine, a debounced JSON store, an actor guarded by a mutex, a monotonic tick thread, and the command and event surface every webview will use.
+**Goal:** Build the Rust model that owns Pomodo's timer, tasks and settings — a tested state machine, a debounced JSON store, an actor guarded by a mutex, a monotonic tick thread, and the command and event surface every webview will use.
 
 **Architecture:** `Model` is a plain serialisable struct with no I/O. `core/timer.rs` advances it by an elapsed-seconds delta so sleep/wake and clock changes are just a large delta, which makes every transition unit-testable without sleeping in tests. `AppState` wraps `Mutex<Model>` and an `AppHandle`, emitting typed events on change. A background thread computes elapsed time from `std::time::Instant` and calls `advance` once per second.
 
@@ -15,7 +15,7 @@
 - Rust owns all state. No timer logic may live in the frontend.
 - Elapsed time is derived from `std::time::Instant`, never from counting ticks — a laptop that sleeps for an hour must resume correctly.
 - Defaults from spec §6.1: focus 1500s, short break 300s, long break 900s, 4 rounds per cycle, accent `Terracotta`, tone `Playful`.
-- Persistence is a single JSON document at `app_data_dir()/momo/state.json`, written atomically (temp file + rename), debounced to at most one write per second, carrying a top-level `schema_version`.
+- Persistence is a single JSON document at `app_data_dir()/pomodo/state.json`, written atomically (temp file + rename), debounced to at most one write per second, carrying a top-level `schema_version`.
 - No panics on the tick thread or in any command — a poisoned mutex must be recovered, not unwrapped.
 - `cargo fmt --check`, `cargo clippy -D warnings` and `cargo test` must all pass. CI runs them on Linux, macOS and Windows.
 - Nothing in this plan is macOS-specific.
@@ -265,7 +265,7 @@ replace it via its own failing test.)
 
 ```bash
 git add src-tauri/src/model.rs src-tauri/src/lib.rs src-tauri/Cargo.toml
-git commit -m "feat(rust): add the Momo model types"
+git commit -m "feat(rust): add the Pomodo model types"
 ```
 
 ---
@@ -1547,7 +1547,7 @@ pub fn run() {
             commands::set_pet_flag,
         ])
         .build(tauri::generate_context!())
-        .expect("error while building the Momo application")
+        .expect("error while building the Pomodo application")
         .run(|app, event| {
             if let tauri::RunEvent::ExitRequested { .. } = event {
                 app.state::<AppState>().flush();
@@ -1584,7 +1584,7 @@ Expected: `list_model` returns the model with five seeded tasks; after `start`, 
 Quit the app, then:
 
 ```bash
-cat "$HOME/Library/Application Support/com.pomodo.app/momo/state.json" | head -20
+cat "$HOME/Library/Application Support/com.pomodo.app/pomodo/state.json" | head -20
 ```
 
 Expected: `schemaVersion: 1` and a `remainingSecs` below 1500. Relaunch and confirm
