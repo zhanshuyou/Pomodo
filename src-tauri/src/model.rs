@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use chrono::{DateTime, Datelike, Local, Timelike};
 
+use crate::core::desk::PetPlacement;
 use crate::core::pet::PetState;
 use crate::core::reminder::{FireContext, Reminder};
 use crate::core::reminder_copy;
@@ -131,7 +132,8 @@ impl Default for BodyCounters {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+// No `Eq`: pet placement carries f64 screen coordinates.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     pub timer: Timer,
@@ -150,6 +152,8 @@ pub struct Model {
     pub deep_work: bool,
     #[serde(default)]
     pub next_reminder_id: u32,
+    #[serde(default)]
+    pub pet_placement: Option<PetPlacement>,
 }
 
 impl Model {
