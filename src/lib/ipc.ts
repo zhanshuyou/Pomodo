@@ -245,3 +245,18 @@ export const upNext = () => invoke<UpNextItem[]>("up_next");
 export const todaySummary = () => invoke<TodaySummary>("today_summary");
 export const quitApp = () => invoke<void>("quit_app");
 export const showMain = () => invoke<void>("show_main");
+
+export const setPetPlacement = (x: number, y: number) =>
+  invoke<void>("set_pet_placement", { x, y });
+export const showPet = () => invoke<void>("show_pet");
+export const hidePet = () => invoke<void>("hide_pet");
+export const hideBubble = () => invoke<void>("hide_bubble");
+export const dismissOverlay = (id: number, acknowledged: boolean) =>
+  invoke<void>("dismiss_overlay", { id, acknowledged });
+
+export const onPetNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
+  listen<FirePayload>("pet:nudge", (e) => cb(e.payload));
+export const onBubbleShow = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
+  listen<FirePayload>("bubble:show", (e) => cb(e.payload));
+export const onOverlayShow = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
+  listen<FirePayload>("overlay:show", (e) => cb(e.payload));

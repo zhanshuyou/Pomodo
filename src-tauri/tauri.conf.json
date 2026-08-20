@@ -55,11 +55,40 @@
         "skipTaskbar": true,
         "resizable": false,
         "shadow": false
+      },
+      {
+        "label": "pet",
+        "url": "pet.html",
+        "width": 380,
+        "height": 200,
+        "focus": false,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "shadow": false
+      },
+      {
+        "label": "bubble",
+        "url": "bubble.html",
+        "width": 360,
+        "height": 110,
+        "focus": false,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "shadow": false
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,

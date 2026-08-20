@@ -7,7 +7,8 @@
     "prefs",
     "tray",
     "pet",
-    "overlay"
+    "overlay",
+    "bubble"
   ],
   "permissions": [
     "core:default",
