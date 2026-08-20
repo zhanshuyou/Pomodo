@@ -282,6 +282,29 @@ impl Reminder {
         self.deferred = false;
     }
 
+    /// Seconds until this reminder next wants attention, for the tray's 接下来轮到 list.
+    /// `None` means it will not fire again today.
+    pub fn seconds_until_due(&self, ctx: &FireContext) -> Option<u32> {
+        if !self.enabled {
+            return None;
+        }
+        if self.deferred {
+            return Some(0);
+        }
+        match self.schedule {
+            Schedule::Every { .. } => Some(self.remaining_secs),
+            Schedule::DailyAt { hour, minute } => {
+                let target = hour as u32 * 60 + minute as u32;
+                let now = ctx.minute_of_day as u32;
+                if target < now {
+                    None
+                } else {
+                    Some((target - now) * 60)
+                }
+            }
+        }
+    }
+
     pub fn ignore(&mut self) {
         self.consecutive_ignores = self.consecutive_ignores.saturating_add(1);
     }
@@ -534,5 +557,44 @@ mod tests {
         assert!(r.silence_in_meeting);
         assert_eq!(r.escalate_after, 3);
         assert_eq!(r.sound, "木鱼 · 30%");
+    }
+
+    #[test]
+    fn seconds_until_due_reports_the_interval_countdown() {
+        let mut r = water();
+        r.tick(600, &ctx());
+        assert_eq!(r.seconds_until_due(&ctx()), Some(1200));
+    }
+
+    #[test]
+    fn seconds_until_due_is_none_for_a_disabled_reminder() {
+        let mut r = water();
+        r.enabled = false;
+        assert_eq!(r.seconds_until_due(&ctx()), None);
+    }
+
+    #[test]
+    fn seconds_until_due_counts_forward_to_a_daily_time() {
+        let r = Reminder::seed(Builtin::Review, 3, Tone::Playful);
+        let mut c = ctx();
+        c.minute_of_day = 17 * 60; // 17:00, target 17:30
+        assert_eq!(r.seconds_until_due(&c), Some(30 * 60));
+    }
+
+    #[test]
+    fn a_daily_time_already_past_reports_none() {
+        let r = Reminder::seed(Builtin::Review, 3, Tone::Playful);
+        let mut c = ctx();
+        c.minute_of_day = 18 * 60;
+        assert_eq!(r.seconds_until_due(&c), None);
+    }
+
+    #[test]
+    fn a_deferred_reminder_reports_zero_seconds() {
+        let mut r = water();
+        let mut c = ctx();
+        c.in_focus = true;
+        r.tick(1800, &c);
+        assert_eq!(r.seconds_until_due(&ctx()), Some(0));
     }
 }
