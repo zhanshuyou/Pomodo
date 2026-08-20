@@ -43,6 +43,17 @@ const FALLBACK: Model = {
     custom: { focus: null, rest: null, nag: null },
     useCustom: false,
   },
+  reminders: [],
+  body: {
+    waterCups: 0,
+    waterGoal: 8,
+    stands: 0,
+    standGoal: 6,
+    longestSitMins: 0,
+    day: "",
+  },
+  deepWork: false,
+  nextReminderId: 0,
 };
 
 class AppStore {
@@ -65,6 +76,15 @@ class AppStore {
   }
   get pet() {
     return this.model.pet;
+  }
+  get reminders() {
+    return this.model.reminders;
+  }
+  get body() {
+    return this.model.body;
+  }
+  get deepWork() {
+    return this.model.deepWork;
   }
   get tone(): Tone {
     return this.model.settings.tone;

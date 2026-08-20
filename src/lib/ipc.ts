@@ -45,6 +45,10 @@ export interface Model {
   nextTaskId: number;
   stats: { sessions: unknown[]; bestStreak: number };
   pet: PetState;
+  reminders: Reminder[];
+  body: BodyCounters;
+  deepWork: boolean;
+  nextReminderId: number;
 }
 
 export interface TickPayload {
@@ -145,3 +149,81 @@ export async function pickPetImage(): Promise<string | null> {
 
 /** Convert a stored absolute path into something an <img src> can load. */
 export { convertFileSrc } from "@tauri-apps/api/core";
+
+export type Intensity = "bubble" | "pet" | "fullscreen";
+export type FocusBehavior = "defer" | "silence" | "interrupt";
+
+export type Schedule =
+  | { kind: "every"; minutes: number }
+  | { kind: "dailyAt"; hour: number; minute: number };
+
+export interface Rules {
+  activeFromMin: number;
+  activeToMin: number;
+  weekdays: boolean[];
+  duringFocus: FocusBehavior;
+  silenceInMeeting: boolean;
+  escalateAfter: number;
+  sound: string;
+}
+
+export interface Reminder {
+  id: number;
+  builtin: "stand" | "water" | "eyes" | "review" | null;
+  name: string;
+  color: string;
+  detail: string;
+  message: string;
+  hint: string;
+  messageEdited: boolean;
+  schedule: Schedule;
+  intensity: Intensity;
+  enabled: boolean;
+  rules: Rules;
+  remainingSecs: number;
+  consecutiveIgnores: number;
+  deferred: boolean;
+  lastDailyFire: number | null;
+}
+
+export interface BodyCounters {
+  waterCups: number;
+  waterGoal: number;
+  stands: number;
+  standGoal: number;
+  longestSitMins: number;
+  day: string;
+}
+
+export interface FirePayload {
+  id: number;
+  name: string;
+  message: string;
+  intensity: Intensity;
+  color: string;
+}
+
+export interface ReminderPatch {
+  name?: string;
+  message?: string;
+  intervalMinutes?: number;
+  intensity?: Intensity;
+  enabled?: boolean;
+  rules?: Rules;
+}
+
+export const addReminder = (template: string | null) =>
+  invoke<number>("add_reminder", { template });
+export const updateReminder = (id: number, patch: ReminderPatch) =>
+  invoke<void>("update_reminder", { id, patch });
+export const toggleReminder = (id: number) => invoke<void>("toggle_reminder", { id });
+export const deleteReminder = (id: number) => invoke<void>("delete_reminder", { id });
+export const ackReminder = (id: number) => invoke<void>("ack_reminder", { id });
+export const ignoreReminder = (id: number) => invoke<void>("ignore_reminder", { id });
+export const snoozeReminder = (id: number, minutes: number) =>
+  invoke<void>("snooze_reminder", { id, minutes });
+export const setDeepWork = (value: boolean) => invoke<void>("set_deep_work", { value });
+export const openPrefs = () => invoke<void>("open_prefs");
+
+export const onReminderFire = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
+  listen<FirePayload>("reminder:fire", (e) => cb(e.payload));

@@ -3,12 +3,28 @@
   import { addTask, setActiveTask, toggleTask } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
 
-  // Placeholder until plan 05 wires the reminder engine's counters.
-  const BODY_STATS = [
-    { name: "喝水", value: "6 / 8 杯", pct: 75, color: "oklch(0.66 0.09 195)" },
-    { name: "站立", value: "4 / 6 次", pct: 66, color: "oklch(0.63 0.13 40)" },
-    { name: "久坐最长", value: "68 分钟", pct: 76, color: "oklch(0.7 0.12 60)" },
-  ];
+  // Driven by the reminder engine: acknowledging 喝水 / 站立 moves these.
+  const bodyStats = $derived([
+    {
+      name: "喝水",
+      value: `${app.body.waterCups} / ${app.body.waterGoal} 杯`,
+      pct: (app.body.waterCups / Math.max(1, app.body.waterGoal)) * 100,
+      color: "oklch(0.66 0.09 195)",
+    },
+    {
+      name: "站立",
+      value: `${app.body.stands} / ${app.body.standGoal} 次`,
+      pct: (app.body.stands / Math.max(1, app.body.standGoal)) * 100,
+      color: "oklch(0.63 0.13 40)",
+    },
+    {
+      name: "久坐最长",
+      value: `${app.body.longestSitMins} 分钟`,
+      // The design's 久坐超 90 分钟 threshold is the full bar.
+      pct: Math.min(100, (app.body.longestSitMins / 90) * 100),
+      color: "oklch(0.7 0.12 60)",
+    },
+  ]);
 
   const doneCount = $derived(app.tasks.filter((t) => t.done).length);
 
@@ -72,7 +88,7 @@
 
   <div class="body-stats">
     <span class="label">身体这边的账</span>
-    {#each BODY_STATS as stat (stat.name)}
+    {#each bodyStats as stat (stat.name)}
       <StatBar name={stat.name} value={stat.value} pct={stat.pct} color={stat.color} />
     {/each}
   </div>
