@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import TitleBar from "../../lib/components/TitleBar.svelte";
+  import { openPrefs } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
   import FocusTab from "./FocusTab.svelte";
   import PetTab from "./PetTab.svelte";
@@ -11,7 +12,17 @@
 
   onMount(() => {
     void app.init();
-    return () => app.dispose();
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+        e.preventDefault();
+        void openPrefs();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      app.dispose();
+    };
   });
 
   // The accent lives on the root element so every token resolves against it.
@@ -32,7 +43,7 @@
     <div class="meta">
       <span>连续 12 天</span>
       <span class="sep"></span>
-      <span>⌘,</span>
+      <button class="prefslink" type="button" onclick={() => void openPrefs()}>⌘,</button>
     </div>
   </TitleBar>
 
@@ -83,6 +94,17 @@
     gap: 14px;
     font-size: 12.5px;
     color: oklch(0.52 0.012 60);
+  }
+  .prefslink {
+    border: none;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+  .prefslink:hover {
+    color: var(--ink);
   }
   .sep {
     width: 1px;
