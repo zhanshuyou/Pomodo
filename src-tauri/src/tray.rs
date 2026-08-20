@@ -1,3 +1,6 @@
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
+
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager};
@@ -5,6 +8,34 @@ use tauri::{AppHandle, Manager};
 use crate::windows;
 
 pub const TRAY_ID: &str = "pomodo-tray";
+
+/// Clicking the tray icon while the popover is open makes macOS resign the
+/// popover's key status first, so the blur handler hides it *before* the click
+/// event arrives. Without this the click would then see a hidden window and
+/// reopen it, making the icon unable to close the panel. The blur records
+/// itself here and the next click within the window consumes it as "already
+/// closed".
+static BLUR_HIDE: LazyLock<Mutex<Option<Instant>>> = LazyLock::new(|| Mutex::new(None));
+
+const BLUR_CLICK_WINDOW: Duration = Duration::from_millis(300);
+
+/// Called by the blur handler when it actually hid a visible popover.
+pub fn note_blur_hide() {
+    if let Ok(mut slot) = BLUR_HIDE.lock() {
+        *slot = Some(Instant::now());
+    }
+}
+
+/// True when a blur just closed the popover, meaning this click was the one
+/// that dismissed it and must not reopen. Always clears the record.
+fn blur_just_closed_it() -> bool {
+    let Ok(mut slot) = BLUR_HIDE.lock() else {
+        return false;
+    };
+    let recent = matches!(*slot, Some(at) if at.elapsed() < BLUR_CLICK_WINDOW);
+    *slot = None;
+    recent
+}
 
 pub fn build(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "打开 Pomodo", true, None::<&str>)?;
@@ -42,6 +73,9 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
             } = event
             {
                 let app = tray.app_handle();
+                if blur_just_closed_it() {
+                    return;
+                }
                 let visible = app
                     .get_webview_window("tray")
                     .and_then(|w| w.is_visible().ok())
