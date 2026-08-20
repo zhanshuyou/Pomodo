@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::Model;
 
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,6 +78,7 @@ impl Store {
 fn fresh() -> Model {
     let mut model = Model::default();
     model.seed_demo_tasks();
+    model.seed_reminders();
     model
 }
 

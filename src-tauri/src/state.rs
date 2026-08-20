@@ -3,7 +3,8 @@ use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Emitter};
 
-use crate::events::{self, ChangedPayload, Section, TickPayload};
+use crate::core::reminder::TickOutcome;
+use crate::events::{self, ChangedPayload, FirePayload, Section, TickPayload};
 use crate::model::{Model, Phase};
 use crate::store::Store;
 
@@ -17,7 +18,8 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(store: Store) -> Self {
-        let model = store.load();
+        let mut model = store.load();
+        model.seed_reminders();
         Self {
             model: Mutex::new(model),
             store,
@@ -101,7 +103,53 @@ impl AppState {
         }
 
         self.emit_tick(app);
+        // A focus phase that just ended releases anything parked during it.
+        let round_ended = changes.iter().any(|c| c.from == Phase::Focus);
+        self.run_reminders(app, elapsed_secs, round_ended);
         self.save_debounced();
+    }
+
+    /// Advance every reminder and emit whatever wants attention.
+    fn run_reminders(&self, app: &AppHandle, elapsed_secs: u32, round_ended: bool) {
+        let now = chrono::Local::now();
+        let today = now.format("%Y-%m-%d").to_string();
+        // Meeting detection is macOS-only and lands in plan 07.
+        let in_meeting = false;
+
+        let fires = self.with(|m| {
+            m.roll_body_day(&today);
+            let ctx = m.fire_context(now, in_meeting);
+            let mut ids: Vec<(u32, crate::core::reminder::Intensity)> = Vec::new();
+
+            for reminder in &mut m.reminders {
+                if round_ended && reminder.release_deferred() {
+                    ids.push((reminder.id, reminder.intensity));
+                }
+                match reminder.tick(elapsed_secs, &ctx) {
+                    TickOutcome::Fire(intensity) => ids.push((reminder.id, intensity)),
+                    TickOutcome::Idle | TickOutcome::Deferred => {}
+                }
+            }
+
+            ids.into_iter()
+                .filter_map(|(id, intensity)| {
+                    m.reminders
+                        .iter()
+                        .find(|r| r.id == id)
+                        .map(|r| FirePayload {
+                            id: r.id,
+                            name: r.name.clone(),
+                            message: r.message.clone(),
+                            intensity,
+                            color: r.color.clone(),
+                        })
+                })
+                .collect::<Vec<_>>()
+        });
+
+        for payload in fires {
+            let _ = app.emit(events::REMINDER_FIRE, payload);
+        }
     }
 }
 
@@ -235,9 +283,16 @@ mod model_extension_tests {
         let dir = std::env::temp_dir().join("momo-state-test-v1");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("create temp dir");
+        // Current schema, but written before stats/pet/reminders existed: every new
+        // field must fall back to its serde default rather than discarding the file.
+        let body = r#"{"timer":{"phase":"focus","remainingSecs":99,"running":false,"round":1,"activeTask":null},"tasks":[],"settings":{"accent":"terracotta","tone":"playful","focusSecs":1500,"shortBreakSecs":300,"longBreakSecs":900,"roundsPerCycle":4,"petFlags":{"snapEdges":true,"clickInteract":true,"hideFullscreen":true,"sleepAnimation":false}},"nextTaskId":0}"#;
         fs::write(
             dir.join("state.json"),
-            r#"{"schemaVersion":2,"model":{"timer":{"phase":"focus","remainingSecs":99,"running":false,"round":1,"activeTask":null},"tasks":[],"settings":{"accent":"terracotta","tone":"playful","focusSecs":1500,"shortBreakSecs":300,"longBreakSecs":900,"roundsPerCycle":4,"petFlags":{"snapEdges":true,"clickInteract":true,"hideFullscreen":true,"sleepAnimation":false}},"nextTaskId":0}}"#,
+            format!(
+                r#"{{"schemaVersion":{},"model":{}}}"#,
+                crate::store::SCHEMA_VERSION,
+                body
+            ),
         )
         .expect("write");
 
@@ -245,5 +300,71 @@ mod model_extension_tests {
         assert_eq!(model.timer.remaining_secs, 99);
         assert_eq!(model.stats.sessions.len(), 0);
         assert_eq!(model.pet.selected, 0);
+    }
+}
+
+#[cfg(test)]
+mod reminder_wiring_tests {
+    use super::*;
+    use std::fs;
+
+    fn store_in(tag: &str) -> Store {
+        let dir = std::env::temp_dir().join(format!("momo-state-test-{tag}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("create temp dir");
+        Store::new(&dir)
+    }
+
+    #[test]
+    fn a_fresh_model_seeds_the_four_builtin_reminders_in_order() {
+        let state = AppState::new(store_in("reminders"));
+        let names: Vec<String> = state
+            .snapshot()
+            .reminders
+            .iter()
+            .map(|r| r.name.clone())
+            .collect();
+        assert_eq!(
+            names,
+            vec!["站起来动一动", "喝水", "远眺护眼", "收工前复盘"]
+        );
+    }
+
+    #[test]
+    fn body_counters_reset_when_the_day_changes() {
+        let state = AppState::new(store_in("body"));
+        state.with(|m| {
+            m.body.water_cups = 5;
+            m.body.day = "2020-01-01".into();
+            m.roll_body_day("2026-08-20");
+        });
+        let body = state.snapshot().body;
+        assert_eq!(body.water_cups, 0);
+        assert_eq!(body.day, "2026-08-20");
+        assert_eq!(body.water_goal, 8);
+        assert_eq!(body.stand_goal, 6);
+    }
+
+    #[test]
+    fn body_counters_survive_a_tick_on_the_same_day() {
+        let state = AppState::new(store_in("body-same"));
+        state.with(|m| {
+            m.body.day = "2026-08-20".into();
+            m.body.water_cups = 3;
+            m.roll_body_day("2026-08-20");
+        });
+        assert_eq!(state.snapshot().body.water_cups, 3);
+    }
+
+    #[test]
+    fn changing_tone_retones_every_unedited_reminder() {
+        use crate::model::Tone;
+        let state = AppState::new(store_in("retone"));
+        state.with(|m| {
+            m.settings.tone = Tone::Professional;
+            m.retone_reminders();
+        });
+        let model = state.snapshot();
+        assert_eq!(model.reminders[1].message, "补充 200ml 水，今日 6/8 杯。");
     }
 }

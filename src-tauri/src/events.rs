@@ -1,10 +1,12 @@
 use serde::Serialize;
 
+use crate::core::reminder::Intensity;
 use crate::model::Phase;
 
 pub const TICK: &str = "timer:tick";
 pub const PHASE: &str = "timer:phase";
 pub const CHANGED: &str = "model:changed";
+pub const REMINDER_FIRE: &str = "reminder:fire";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,6 +23,8 @@ pub enum Section {
     Tasks,
     Settings,
     Timer,
+    Reminders,
+    Body,
 }
 
 impl Section {
@@ -29,6 +33,8 @@ impl Section {
             Section::Tasks => "tasks",
             Section::Settings => "settings",
             Section::Timer => "timer",
+            Section::Reminders => "reminders",
+            Section::Body => "body",
         }
     }
 }
@@ -37,4 +43,14 @@ impl Section {
 #[serde(rename_all = "camelCase")]
 pub struct ChangedPayload {
     pub section: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirePayload {
+    pub id: u32,
+    pub name: String,
+    pub message: String,
+    pub intensity: Intensity,
+    pub color: String,
 }
