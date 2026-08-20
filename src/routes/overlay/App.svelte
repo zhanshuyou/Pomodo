@@ -1,3 +1,113 @@
-<script lang="ts"></script>
+<script lang="ts">
+  import { onMount } from "svelte";
+  import PetCanvas from "../../lib/components/PetCanvas.svelte";
+  import { mmss } from "../../lib/format";
+  import { type FirePayload, dismissOverlay, onOverlayShow } from "../../lib/ipc";
+  import { PETS } from "../../lib/sprites";
+  import { app } from "../../lib/state.svelte";
 
-<main>Pomodo · overlay</main>
+  /** The design's overlay shows 02:41 — a short forced break. */
+  const BREAK_SECS = 161;
+
+  let fire = $state<FirePayload | null>(null);
+  let left = $state(BREAK_SECS);
+
+  const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
+
+  onMount(() => {
+    void app.init();
+
+    const un = onOverlayShow((payload) => {
+      fire = payload;
+      left = BREAK_SECS;
+    });
+
+    const ticker = setInterval(() => {
+      if (left > 0) {
+        left -= 1;
+      } else if (fire) {
+        // Sitting through the whole countdown counts as doing the thing.
+        void dismissOverlay(fire.id, true);
+      }
+    }, 1000);
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && fire) {
+        void dismissOverlay(fire.id, false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      clearInterval(ticker);
+      window.removeEventListener("keydown", onKey);
+      void un.then((f) => f());
+      app.dispose();
+    };
+  });
+
+  $effect(() => {
+    document.documentElement.dataset.accent = app.settings.accent;
+  });
+</script>
+
+<div class="mask">
+  <PetCanvas map={pet.map} body={pet.body} scale={3} anim="sway" alt={pet.name} />
+  <span class="count">{mmss(left)}</span>
+  <span class="line">{fire?.message ?? "站起来走走，看点远的东西"}</span>
+  <button class="done" type="button" onclick={() => fire && void dismissOverlay(fire.id, true)}>
+    做完了
+  </button>
+  <span class="escape">按 ⎋ 逃跑（它会记着）</span>
+</div>
+
+<style>
+  :global(html),
+  :global(body) {
+    margin: 0;
+    overflow: hidden;
+  }
+  .mask {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: oklch(0.29 0.025 258);
+    color: oklch(0.97 0.004 80);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .count {
+    font-family: var(--font-mono);
+    font-size: 64px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .line {
+    font-size: 15px;
+    opacity: 0.85;
+  }
+  .done {
+    margin-top: 14px;
+    padding: 12px 28px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: oklch(0.99 0.004 80);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--inset-press);
+  }
+  .escape {
+    position: absolute;
+    bottom: 18px;
+    right: 20px;
+    font-size: 11px;
+    opacity: 0.5;
+  }
+</style>

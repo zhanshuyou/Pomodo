@@ -32,6 +32,7 @@ pub fn run() {
             app.manage(AppState::new(Store::new(&dir)));
 
             tray::build(&app.handle().clone())?;
+            let _ = windows::ensure_pet(&app.handle().clone());
 
             // Pomodo lives in the menu bar; once the main window is closed there is
             // no reason for a Dock icon.
@@ -103,6 +104,11 @@ pub fn run() {
             commands::today_summary,
             commands::quit_app,
             commands::show_main,
+            commands::set_pet_placement,
+            commands::show_pet,
+            commands::hide_pet,
+            commands::hide_bubble,
+            commands::dismiss_overlay,
         ])
         .build(tauri::generate_context!())
         .expect("error while building the Pomodo application")

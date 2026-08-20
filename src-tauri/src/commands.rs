@@ -471,3 +471,52 @@ mod tests {
         assert_eq!(today_label(0, 0), "今天 0 个番茄 · 0h00m");
     }
 }
+
+use crate::core::desk::{snap, PetPlacement};
+
+#[tauri::command]
+pub fn set_pet_placement(state: State<'_, AppState>, app: AppHandle, x: f64, y: f64) {
+    let snap_edges = state.with(|m| m.settings.pet_flags.snap_edges);
+    let screen = crate::windows::primary_screen_rect(&app);
+    let mut placement = PetPlacement { x, y };
+    if snap_edges {
+        placement = snap(placement, crate::windows::PET_SIZE, screen);
+    }
+    state.with(|m| m.pet_placement = Some(placement));
+    if let Some(window) = tauri::Manager::get_webview_window(&app, "pet") {
+        let _ = window.set_position(tauri::LogicalPosition::new(placement.x, placement.y));
+    }
+    state.flush();
+}
+
+#[tauri::command]
+pub fn show_pet(app: AppHandle) -> Result<(), String> {
+    crate::windows::ensure_pet(&app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn hide_pet(app: AppHandle) {
+    crate::windows::hide_pet(&app);
+}
+
+#[tauri::command]
+pub fn hide_bubble(app: AppHandle) {
+    crate::windows::hide_bubble(&app);
+}
+
+/// Close the overlay on every display. `acknowledged` distinguishes 做完了 from ⎋.
+#[tauri::command]
+pub fn dismiss_overlay(state: State<'_, AppState>, app: AppHandle, id: u32, acknowledged: bool) {
+    crate::windows::dismiss_overlays(&app);
+    state.with(|m| {
+        if let Some(r) = m.reminders.iter_mut().find(|r| r.id == id) {
+            if acknowledged {
+                r.acknowledge();
+            } else {
+                r.ignore();
+            }
+        }
+    });
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+}

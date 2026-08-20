@@ -22,6 +22,7 @@ export default defineConfig(async () => ({
         tray: resolve(root, "tray.html"),
         pet: resolve(root, "pet.html"),
         overlay: resolve(root, "overlay.html"),
+        bubble: resolve(root, "bubble.html"),
         gallery: resolve(root, "gallery.html"),
       },
     },

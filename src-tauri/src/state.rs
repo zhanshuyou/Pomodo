@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Emitter};
 
-use crate::core::reminder::TickOutcome;
+use crate::core::reminder::{Intensity, TickOutcome};
 use crate::events::{self, ChangedPayload, FirePayload, Section, TickPayload};
 use crate::model::{Model, Phase};
 use crate::store::Store;
@@ -153,8 +153,26 @@ impl AppState {
         });
 
         for payload in fires {
-            let _ = app.emit(events::REMINDER_FIRE, payload);
+            // Every window hears the raw event; the surface that renders it depends
+            // on the intensity the engine chose for this particular firing.
+            let _ = app.emit(events::REMINDER_FIRE, payload.clone());
+            match payload.intensity {
+                Intensity::Bubble => {
+                    let _ = crate::windows::show_bubble(app, payload.clone());
+                }
+                Intensity::Pet => {
+                    let _ = crate::windows::ensure_pet(app);
+                    let _ = app.emit_to("pet", "pet:nudge", payload.clone());
+                }
+                Intensity::Fullscreen => {
+                    let _ = crate::windows::show_overlay(app, payload.clone());
+                }
+            }
         }
+
+        // The pet ducks out of the way of full-screen apps between firings.
+        let hide = self.with(|m| m.settings.pet_flags.hide_fullscreen);
+        crate::windows::sync_pet_visibility(app, hide);
     }
 }
 
