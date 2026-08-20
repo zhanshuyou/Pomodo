@@ -21,9 +21,18 @@
   --radius-control: 11px;
   --radius-chip: 9px;
 
+  /* Left padding for a window's own title bar. On macOS the native traffic
+     lights float over our content (titleBarStyle: Overlay), so content must
+     start clear of them; other platforms draw their own decorations above. */
+  --titlebar-inset: 16px;
+
   --inset-press: inset 0 -3px 0 oklch(0.24 0.012 60 / 0.18);
   --shadow-window: 0 28px 56px -28px oklch(0.24 0.012 60 / 0.45);
   --shadow-bubble: 0 8px 20px -12px oklch(0.24 0.012 60 / 0.5);
+}
+
+:root[data-platform="macos"] {
+  --titlebar-inset: 78px;
 }
 
 :root[data-accent="blue"] {
