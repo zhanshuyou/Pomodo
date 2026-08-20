@@ -29,10 +29,18 @@ pub fn pause(state: State<'_, AppState>, app: AppHandle) {
 pub fn skip_phase(state: State<'_, AppState>, app: AppHandle) {
     let change = state.with(|m| {
         let settings = m.settings.clone();
-        m.timer.skip(&settings)
+        let was_focus = m.timer.phase == crate::model::Phase::Focus;
+        // Credit only the time actually served before the user bailed.
+        let elapsed = settings.focus_secs.saturating_sub(m.timer.remaining_secs);
+        let change = m.timer.skip(&settings);
+        if was_focus {
+            m.record_focus_phase(false, elapsed);
+        }
+        change
     });
     let _ = app.emit(events::PHASE, change);
     state.emit_tick(&app);
+    state.emit_changed(&app, Section::Tasks);
     state.flush();
 }
 

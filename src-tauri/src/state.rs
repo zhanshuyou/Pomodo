@@ -86,10 +86,8 @@ impl AppState {
             let settings = m.settings.clone();
             let changes = m.timer.advance(elapsed_secs, &settings);
             for change in &changes {
-                if change.completed && change.from == Phase::Focus {
-                    if let Some(id) = m.timer.active_task {
-                        m.credit_task(id);
-                    }
+                if change.from == Phase::Focus {
+                    m.record_focus_phase(change.completed, settings.focus_secs);
                 }
             }
             changes
@@ -196,5 +194,56 @@ mod tests {
         .join();
         // Must not panic.
         assert_eq!(state.snapshot().tasks.len(), 5);
+    }
+}
+
+#[cfg(test)]
+mod model_extension_tests {
+    use super::*;
+    use crate::model::Phase;
+    use std::fs;
+
+    fn store_in(tag: &str) -> Store {
+        let dir = std::env::temp_dir().join(format!("momo-state-test-{tag}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("create temp dir");
+        Store::new(&dir)
+    }
+
+    #[test]
+    fn completing_a_focus_phase_records_a_session_and_credits_the_pet() {
+        let state = AppState::new(store_in("session"));
+        state.with(|m| {
+            m.timer.start();
+            let settings = m.settings.clone();
+            let changes = m.timer.advance(settings.focus_secs, &settings);
+            for change in &changes {
+                if change.from == Phase::Focus {
+                    m.record_focus_phase(change.completed, settings.focus_secs);
+                }
+            }
+        });
+
+        let model = state.snapshot();
+        assert_eq!(model.stats.sessions.len(), 1);
+        assert!(model.stats.sessions[0].completed);
+        assert_eq!(model.pet.lifetime_pomodoros, 1);
+    }
+
+    #[test]
+    fn a_file_written_before_stats_and_pet_existed_still_loads() {
+        let dir = std::env::temp_dir().join("momo-state-test-v1");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("create temp dir");
+        fs::write(
+            dir.join("state.json"),
+            r#"{"schemaVersion":2,"model":{"timer":{"phase":"focus","remainingSecs":99,"running":false,"round":1,"activeTask":null},"tasks":[],"settings":{"accent":"terracotta","tone":"playful","focusSecs":1500,"shortBreakSecs":300,"longBreakSecs":900,"roundsPerCycle":4,"petFlags":{"snapEdges":true,"clickInteract":true,"hideFullscreen":true,"sleepAnimation":false}},"nextTaskId":0}}"#,
+        )
+        .expect("write");
+
+        let model = Store::new(&dir).load();
+        assert_eq!(model.timer.remaining_secs, 99);
+        assert_eq!(model.stats.sessions.len(), 0);
+        assert_eq!(model.pet.selected, 0);
     }
 }

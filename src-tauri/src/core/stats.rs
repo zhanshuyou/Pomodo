@@ -1,7 +1,7 @@
 use chrono::{DateTime, Datelike, Days, NaiveDate, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 
-use crate::model::TaskId;
+use crate::model::{Model, TaskId};
 
 /// One focus phase. `completed` is false when the user skipped out of it,
 /// which is what the design counts under 中断次数.
@@ -175,6 +175,26 @@ impl Stats {
             best_streak: self.best_streak.max(streak),
             bars,
         }
+    }
+}
+
+impl Model {
+    /// Record a finished (or abandoned) focus phase against stats, the pet and the task.
+    pub fn record_focus_phase(&mut self, completed: bool, secs: u32) {
+        self.stats.record(Session {
+            started_at: Utc::now().timestamp(),
+            secs,
+            task: self.timer.active_task,
+            completed,
+        });
+        if completed {
+            self.pet.credit();
+            if let Some(id) = self.timer.active_task {
+                self.credit_task(id);
+            }
+        }
+        let today = Utc::now().date_naive();
+        self.stats.best_streak = self.stats.best_streak.max(self.stats.streak(today));
     }
 }
 

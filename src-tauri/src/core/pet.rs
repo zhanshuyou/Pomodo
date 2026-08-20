@@ -97,8 +97,11 @@ mod tests {
     #[test]
     fn the_designs_level_seven_figures_reproduce_exactly() {
         // Artboard 01 shows Lv.7 at 62% with 再专注 5 个番茄升到 Lv.8.
-        let mut p = PetState::default();
-        p.lifetime_pomodoros = 6 * POMODOROS_PER_LEVEL + 8; // 86
+        // Artboard figure: 6 full levels plus 8 into the seventh.
+        let p = PetState {
+            lifetime_pomodoros: 6 * POMODOROS_PER_LEVEL + 8, // 86
+            ..PetState::default()
+        };
         assert_eq!(p.level(), 7);
         assert_eq!(p.to_next_level(), 5);
         assert!((p.level_progress() - 8.0 / 13.0).abs() < 1e-6);
@@ -115,16 +118,20 @@ mod tests {
 
     #[test]
     fn peep_and_boo_stay_locked_at_level_seven() {
-        let mut p = PetState::default();
-        p.lifetime_pomodoros = 86;
+        let p = PetState {
+            lifetime_pomodoros: 86,
+            ..PetState::default()
+        };
         assert!(!p.is_unlocked(4));
         assert!(!p.is_unlocked(5));
     }
 
     #[test]
     fn peep_unlocks_at_one_hundred_and_fifty_and_boo_at_three_hundred() {
-        let mut p = PetState::default();
-        p.lifetime_pomodoros = 150;
+        let mut p = PetState {
+            lifetime_pomodoros: 150,
+            ..PetState::default()
+        };
         assert!(p.is_unlocked(4));
         assert!(!p.is_unlocked(5));
 
@@ -155,8 +162,10 @@ mod tests {
 
     #[test]
     fn level_progress_is_zero_immediately_after_levelling() {
-        let mut p = PetState::default();
-        p.lifetime_pomodoros = POMODOROS_PER_LEVEL;
+        let p = PetState {
+            lifetime_pomodoros: POMODOROS_PER_LEVEL,
+            ..PetState::default()
+        };
         assert_eq!(p.level(), 2);
         assert_eq!(p.level_progress(), 0.0);
         assert_eq!(p.to_next_level(), POMODOROS_PER_LEVEL);
