@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::core::pet::PetState;
+use crate::core::stats::Stats;
 use crate::core::timer::Timer;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -106,6 +108,10 @@ pub struct Model {
     pub tasks: Vec<Task>,
     pub settings: Settings,
     pub next_task_id: TaskId,
+    #[serde(default)]
+    pub stats: Stats,
+    #[serde(default)]
+    pub pet: PetState,
 }
 
 #[cfg(test)]
