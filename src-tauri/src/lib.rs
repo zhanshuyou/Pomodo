@@ -2,6 +2,7 @@ pub mod commands;
 pub mod core;
 pub mod events;
 pub mod model;
+pub mod platform;
 pub mod state;
 pub mod store;
 pub mod tray;

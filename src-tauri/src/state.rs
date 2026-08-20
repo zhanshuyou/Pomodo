@@ -118,8 +118,8 @@ impl AppState {
     fn run_reminders(&self, app: &AppHandle, elapsed_secs: u32, round_ended: bool) {
         let now = chrono::Local::now();
         let today = now.format("%Y-%m-%d").to_string();
-        // Meeting detection is macOS-only and lands in plan 07.
-        let in_meeting = false;
+        // 检测到会议 / 通话 — reads the default input device's run state.
+        let in_meeting = crate::platform::platform().microphone_in_use();
 
         let fires = self.with(|m| {
             m.roll_body_day(&today);
