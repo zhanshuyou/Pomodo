@@ -3,10 +3,12 @@ import type { UnlistenFn } from "@tauri-apps/api/event";
 import {
   IS_TAURI,
   type Model,
+  type StatsSummary,
   listModel,
   onChanged,
   onPhase,
   onTick,
+  statsSummary,
 } from "./ipc";
 import { ACCENTS, DEFAULT_ACCENT, DEFAULT_TONE, type Tone } from "./theme";
 
@@ -34,12 +36,20 @@ const FALLBACK: Model = {
     },
   },
   nextTaskId: 0,
+  stats: { sessions: [], bestStreak: 0 },
+  pet: {
+    selected: 0,
+    lifetimePomodoros: 0,
+    custom: { focus: null, rest: null, nag: null },
+    useCustom: false,
+  },
 };
 
 class AppStore {
   model = $state<Model>(FALLBACK);
   ready = $state(false);
   bellyCells = $state(0);
+  summary = $state<StatsSummary | null>(null);
 
   #unlisteners: UnlistenFn[] = [];
   #started = false;
@@ -52,6 +62,9 @@ class AppStore {
   }
   get settings() {
     return this.model.settings;
+  }
+  get pet() {
+    return this.model.pet;
   }
   get tone(): Tone {
     return this.model.settings.tone;
@@ -95,6 +108,12 @@ class AppStore {
 
   async refresh(): Promise<void> {
     this.model = await listModel();
+    await this.refreshStats();
+  }
+
+  async refreshStats(): Promise<void> {
+    if (!IS_TAURI) return;
+    this.summary = await statsSummary();
   }
 
   dispose(): void {
