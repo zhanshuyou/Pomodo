@@ -17,6 +17,7 @@ use crate::store::Store;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let dir = app
                 .path()
@@ -59,6 +60,11 @@ pub fn run() {
             commands::set_accent,
             commands::set_tone,
             commands::set_pet_flag,
+            commands::stats_summary,
+            commands::select_pet,
+            commands::set_use_custom_pet,
+            commands::import_custom_pet,
+            commands::clear_custom_pet,
         ])
         .build(tauri::generate_context!())
         .expect("error while building the Momo application")

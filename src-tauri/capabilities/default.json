@@ -2,11 +2,18 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the Momo windows",
-  "windows": ["main", "prefs", "tray", "pet", "overlay"],
+  "windows": [
+    "main",
+    "prefs",
+    "tray",
+    "pet",
+    "overlay"
+  ],
   "permissions": [
     "core:default",
     "core:event:default",
     "core:window:allow-start-dragging",
-    "opener:default"
+    "opener:default",
+    "dialog:allow-open"
   ]
 }
