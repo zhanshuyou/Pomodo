@@ -58,7 +58,13 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
     let menu = Menu::with_items(app, &[&open, &pet, &prefs, &quit])?;
 
     TrayIconBuilder::with_id(TRAY_ID)
-        .icon(app.default_window_icon().cloned().expect("bundled icon"))
+        // The menu-bar mark is a macOS template image: shape in the alpha channel
+        // only, so the system paints it dark on a light bar, light on a dark one,
+        // and inverts it while the menu is open. The app icon would not do that.
+        .icon(
+            tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))
+                .expect("tray template icon"),
+        )
         .icon_as_template(true)
         .menu(&menu)
         // The menu is the right-click affordance only; a left click opens the popover.
