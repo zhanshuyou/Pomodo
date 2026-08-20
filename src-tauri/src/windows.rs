@@ -117,7 +117,9 @@ pub fn ensure_pet(app: &AppHandle) -> tauri::Result<()> {
     });
     let placement = clamp_to_screen(placement, PET_SIZE, screen);
     window.set_position(LogicalPosition::new(placement.x, placement.y))?;
-    window.show()?;
+    if !window.is_visible().unwrap_or(false) {
+        window.show()?;
+    }
     Ok(())
 }
 
@@ -131,15 +133,25 @@ pub fn hide_pet(app: &AppHandle) {
 /// The macOS check needs the main thread, so it is hopped there.
 pub fn sync_pet_visibility(app: &AppHandle, hide_when_fullscreen: bool) {
     let handle = app.clone();
+    let wanted = pet_wanted(app);
     let _ = app.run_on_main_thread(move || {
         let Some(window) = handle.get_webview_window("pet") else {
             return;
         };
-        let should_hide = hide_when_fullscreen && platform().fullscreen_app_frontmost();
-        let _ = if should_hide {
-            window.hide()
-        } else {
+        // A dismissed pet stays dismissed; only then does full-screen matter.
+        let should_show =
+            wanted && !(hide_when_fullscreen && platform().fullscreen_app_frontmost());
+        // Only act on a real change. `show()` maps to makeKeyAndOrderFront on
+        // macOS, so calling it every tick repeatedly stole key status from
+        // whatever was focused — which closed the tray popover a second after
+        // it opened.
+        if should_show == window.is_visible().unwrap_or(false) {
+            return;
+        }
+        let _ = if should_show {
             window.show()
+        } else {
+            window.hide()
         };
     });
 }
