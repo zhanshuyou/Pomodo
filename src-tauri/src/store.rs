@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::Model;
 
-pub const SCHEMA_VERSION: u32 = 3;
+pub const SCHEMA_VERSION: u32 = 4;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,3 +1,4 @@
+pub mod desk;
 pub mod pet;
 pub mod reminder;
 pub mod reminder_copy;
