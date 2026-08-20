@@ -204,7 +204,7 @@ pub fn clear_custom_pet(state: State<'_, AppState>, app: AppHandle, slot: String
     state.flush();
 }
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::core::reminder::{Intensity, Reminder, Rules, Schedule};
 use crate::core::reminder_copy::Builtin;
@@ -349,4 +349,125 @@ pub fn set_deep_work(state: State<'_, AppState>, app: AppHandle, value: bool) {
 #[tauri::command]
 pub fn open_prefs(app: AppHandle) -> Result<(), String> {
     crate::windows::show_prefs(&app).map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpNextItem {
+    pub id: u32,
+    pub name: String,
+    pub color: String,
+    pub due: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TodaySummary {
+    pub pomodoros: u32,
+    pub focus_secs: u32,
+    pub label: String,
+}
+
+/// Human wait time for the tray's 接下来轮到 column.
+fn due_label(secs: u32) -> String {
+    let mins = secs / 60;
+    if mins == 0 {
+        return "马上".to_string();
+    }
+    if mins < 60 {
+        return format!("{mins} 分钟后");
+    }
+    let hours = mins / 60;
+    let rest = mins % 60;
+    if rest == 0 {
+        format!("{hours} 小时后")
+    } else {
+        format!("{hours} 小时 {rest} 分后")
+    }
+}
+
+/// The design's footer line: 今天 5 个番茄 · 2h05m
+fn today_label(pomodoros: u32, focus_secs: u32) -> String {
+    let h = focus_secs / 3600;
+    let m = (focus_secs % 3600) / 60;
+    format!("今天 {pomodoros} 个番茄 · {h}h{m:02}m")
+}
+
+#[tauri::command]
+pub fn up_next(state: State<'_, AppState>) -> Vec<UpNextItem> {
+    let now = chrono::Local::now();
+    state.with(|m| {
+        // The list shows what is scheduled, regardless of whether a meeting would
+        // currently silence it.
+        let ctx = m.fire_context(now, false);
+        let mut items: Vec<(u32, UpNextItem)> = m
+            .reminders
+            .iter()
+            .filter_map(|r| {
+                r.seconds_until_due(&ctx).map(|secs| {
+                    (
+                        secs,
+                        UpNextItem {
+                            id: r.id,
+                            name: r.name.clone(),
+                            color: r.color.clone(),
+                            due: due_label(secs),
+                        },
+                    )
+                })
+            })
+            .collect();
+        items.sort_by_key(|(secs, _)| *secs);
+        items.into_iter().take(3).map(|(_, item)| item).collect()
+    })
+}
+
+#[tauri::command]
+pub fn today_summary(state: State<'_, AppState>) -> TodaySummary {
+    let today = chrono::Utc::now().date_naive();
+    state.with(|m| {
+        let counts = m.stats.daily_counts(today, 1);
+        let pomodoros = counts.first().copied().unwrap_or(0);
+        let focus_secs = pomodoros * m.settings.focus_secs;
+        TodaySummary {
+            pomodoros,
+            focus_secs,
+            label: today_label(pomodoros, focus_secs),
+        }
+    })
+}
+
+#[tauri::command]
+pub fn quit_app(state: State<'_, AppState>, app: AppHandle) {
+    state.flush();
+    app.exit(0);
+}
+
+#[tauri::command]
+pub fn show_main(app: AppHandle) -> Result<(), String> {
+    crate::windows::show_main(&app).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn due_label_renders_minutes_for_short_waits() {
+        assert_eq!(due_label(4 * 60), "4 分钟后");
+        assert_eq!(due_label(59), "马上");
+        assert_eq!(due_label(0), "马上");
+    }
+
+    #[test]
+    fn due_label_renders_hours_and_minutes_for_long_waits() {
+        assert_eq!(due_label(90 * 60), "1 小时 30 分后");
+        assert_eq!(due_label(120 * 60), "2 小时后");
+    }
+
+    #[test]
+    fn today_label_matches_the_design_footer() {
+        assert_eq!(today_label(5, 2 * 3600 + 5 * 60), "今天 5 个番茄 · 2h05m");
+        assert_eq!(today_label(0, 0), "今天 0 个番茄 · 0h00m");
+    }
 }

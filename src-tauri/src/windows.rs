@@ -14,3 +14,32 @@ pub fn show_prefs(app: &AppHandle) -> tauri::Result<()> {
         .build()?;
     Ok(())
 }
+
+pub fn show_tray(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window("tray") {
+        // Anchor the popover under the menu-bar item.
+        let _ = tauri_plugin_positioner::WindowExt::move_window(
+            &window,
+            tauri_plugin_positioner::Position::TrayBottomCenter,
+        );
+        window.show()?;
+        window.set_focus()?;
+    }
+    Ok(())
+}
+
+pub fn hide_tray(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window("tray") {
+        window.hide()?;
+    }
+    Ok(())
+}
+
+pub fn show_main(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.show()?;
+        window.unminimize()?;
+        window.set_focus()?;
+    }
+    Ok(())
+}
