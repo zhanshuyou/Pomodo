@@ -1,4 +1,4 @@
-# Momo 04 — 统计 + 宠物 Tabs Implementation Plan
+# Pomodo 04 — 统计 + 宠物 Tabs Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -17,7 +17,7 @@
 - Aggregation functions take `today: NaiveDate` as an argument. No function may call `Local::now()` internally except the thin wrappers in `commands.rs`.
 - Bar-chart cell colour is exactly `oklch(from <accent> calc(l + (0.16 - index * 0.035)) c h)` — `barCellColor` from plan 01. A day with zero pomodoros renders one `oklch(0.93 0.008 70)` cell.
 - Copy from spec §8.1 verbatim, including `较上周 −4` with U+2212, and `每格 = 一个番茄，颜色越深越连贯`.
-- Custom pet files are copied into `app_data_dir()/momo/pets/`; the model stores paths only.
+- Custom pet files are copied into `app_data_dir()/pomodo/pets/`; the model stores paths only.
 - Locked pets render with body `oklch(0.86 0.006 70)` at `opacity: 0.5` and are not selectable.
 - The full gate stays green: `npm test`, `npm run check`, `npm run build`, `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`.
 
@@ -828,7 +828,7 @@ git commit -m "feat(rust): record focus sessions into stats and pet progress"
   - `stats_summary(state) -> StatsSummary`
   - `select_pet(state, app, id: u8) -> bool`
   - `set_use_custom_pet(state, app, value: bool)`
-  - `import_custom_pet(state, app, slot: String, source: String) -> Result<String, String>` — copies the file into `app_data_dir()/momo/pets/<slot>.<ext>` and stores the path; `slot` is `focus` / `rest` / `nag`
+  - `import_custom_pet(state, app, slot: String, source: String) -> Result<String, String>` — copies the file into `app_data_dir()/pomodo/pets/<slot>.<ext>` and stores the path; `slot` is `focus` / `rest` / `nag`
   - `clear_custom_pet(state, app, slot: String)`
 
 - [ ] **Step 1: Add the dialog plugin**
@@ -1196,7 +1196,7 @@ Create `src/routes/main/StatsTab.svelte`:
       </span>
     </div>
     <div class="insight">
-      <span class="ititle">Momo 的评价</span>
+      <span class="ititle">Pomodo 的评价</span>
       <span class="ibody">{petVerdict(app.tone)}</span>
     </div>
   </div>
@@ -1484,7 +1484,7 @@ Create `src/routes/main/PetTab.svelte`:
       <div class="customtext">
         <span class="sectitle">或者养你自己的</span>
         <span class="blurb">
-          拖入 PNG / GIF / APNG 就成了你的宠物。可以给「专注」「休息」「催你站起来」三种状态各配一张，Momo
+          拖入 PNG / GIF / APNG 就成了你的宠物。可以给「专注」「休息」「催你站起来」三种状态各配一张，Pomodo
           自动换装；像素图会按整数倍放大，不糊。
         </span>
         <div class="chiprow">
@@ -1739,7 +1739,7 @@ Expected: `interruptions` is 3 (skips from a focus phase only), `pomodoros` is 0
 
 Expected: four stat cards in a row with 30px mono numerals; the bar chart 148px tall with
 13px cells and 3px gaps; empty days show one pale cell; the two insight cards sit side by
-side; the Momo 的评价 text changes when the tone changes.
+side; the Pomodo 的评价 text changes when the tone changes.
 
 - [ ] **Step 3: Check the 宠物 tab against the artboard**
 
@@ -1751,7 +1751,7 @@ BOO greyed at 50% opacity and not clickable; clicking TOFU switches the hero *an
 
 Click the drop slot, choose a PNG. Expected: the image appears in the slot, the 专注 chip
 lights up, and the file exists at
-`~/Library/Application Support/com.pomodo.app/momo/pets/focus.png`. Click the 专注 chip to
+`~/Library/Application Support/com.pomodo.app/pomodo/pets/focus.png`. Click the 专注 chip to
 clear it; the slot returns to the dashed prompt.
 
 - [ ] **Step 5: Check levelling**

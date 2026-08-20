@@ -32,7 +32,7 @@
 </script>
 
 <div class="window">
-  <TitleBar title="Momo">
+  <TitleBar title="Pomodo">
     <div class="tabs">
       {#each TABS as name, i (name)}
         <button class="tab" class:active={tab === i} type="button" onclick={() => (tab = i)}>

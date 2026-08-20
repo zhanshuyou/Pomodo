@@ -91,7 +91,7 @@
   </div>
 
   <div class="window">
-    <TitleBar title="Momo" />
+    <TitleBar title="Pomodo" />
   </div>
 </div>
 

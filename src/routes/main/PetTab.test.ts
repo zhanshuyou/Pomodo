@@ -170,7 +170,7 @@ describe("StatsTab", () => {
 
   it("renders both insight cards", () => {
     const titles = [...host.querySelectorAll(".ititle")].map((e) => e.textContent);
-    expect(titles).toEqual(["被打断最多的时段", "Momo 的评价"]);
+    expect(titles).toEqual(["被打断最多的时段", "Pomodo 的评价"]);
     expect(host.querySelector(".ccaption")?.textContent).toBe(
       "每格 = 一个番茄，颜色越深越连贯",
     );

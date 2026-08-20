@@ -1,4 +1,4 @@
-# Momo 03 — 主窗口 · 专注 Tab Implementation Plan
+# Pomodo 03 — 主窗口 · 专注 Tab Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -418,7 +418,7 @@ Replace `src-tauri/capabilities/default.json`:
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the Momo windows",
+  "description": "Capability for the Pomodo windows",
   "windows": ["main", "prefs", "tray", "pet", "overlay"],
   "permissions": [
     "core:default",
@@ -609,7 +609,7 @@ In `src-tauri/tauri.conf.json`, replace the `app.windows` array:
 "windows": [
   {
     "label": "main",
-    "title": "Momo",
+    "title": "Pomodo",
     "width": 1180,
     "height": 700,
     "minWidth": 1180,
@@ -651,7 +651,7 @@ Replace `src/routes/main/App.svelte`:
 </script>
 
 <div class="window">
-  <TitleBar title="Momo">
+  <TitleBar title="Pomodo">
     <div class="tabs">
       {#each TABS as name, i (name)}
         <button class="tab" class:active={tab === i} type="button" onclick={() => (tab = i)}>

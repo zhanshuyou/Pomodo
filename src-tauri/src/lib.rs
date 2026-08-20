@@ -24,7 +24,7 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .expect("app data dir")
-                .join("momo");
+                .join("pomodo");
             std::fs::create_dir_all(&dir)?;
             app.manage(AppState::new(Store::new(&dir)));
 
@@ -77,7 +77,7 @@ pub fn run() {
             commands::open_prefs,
         ])
         .build(tauri::generate_context!())
-        .expect("error while building the Momo application")
+        .expect("error while building the Pomodo application")
         .run(|app, event| {
             if let tauri::RunEvent::ExitRequested { .. } = event {
                 app.state::<AppState>().flush();

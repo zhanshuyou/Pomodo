@@ -1,8 +1,8 @@
-# Momo 01 — Foundation Implementation Plan
+# Pomodo 01 — Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the Tauri scaffold with Momo's visual foundation — design tokens, vendored fonts, the pixel sprite renderer, the shared component kit, and a five-entry Vite build — all verifiable in a plain browser without Tauri.
+**Goal:** Replace the Tauri scaffold with Pomodo's visual foundation — design tokens, vendored fonts, the pixel sprite renderer, the shared component kit, and a five-entry Vite build — all verifiable in a plain browser without Tauri.
 
 **Architecture:** Pure frontend. Two dependency-free modules (`sprites.ts`, `theme.ts`) hold every value copied from the design and are unit-tested with vitest. Svelte components consume them. A dev-only gallery route renders every component so the work can be eyeballed against the artboards before any Rust exists.
 
@@ -104,7 +104,7 @@ Create `src/routes/main/App.svelte` as a temporary stub:
 ```svelte
 <script lang="ts"></script>
 
-<main>Momo</main>
+<main>Pomodo</main>
 ```
 
 Replace `src/main.ts`:
@@ -133,7 +133,7 @@ Update `index.html` to drop the vite favicon reference:
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Momo</title>
+    <title>Pomodo</title>
   </head>
   <body>
     <div id="app"></div>
@@ -1597,7 +1597,7 @@ and a placeholder `src/routes/<name>/App.svelte`:
 ```svelte
 <script lang="ts"></script>
 
-<main>Momo · <name></main>
+<main>Pomodo · <name></main>
 ```
 
 Replace `<name>` with the actual route name in both files. These are deliberate
@@ -1609,7 +1609,7 @@ placeholders — plans 5, 6 and 7 fill them in. Then create `<name>.html` at the
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Momo</title>
+    <title>Pomodo</title>
   </head>
   <body>
     <div id="app"></div>
@@ -1709,7 +1709,7 @@ Create `src/entries/gallery.ts` the same way, then `src/routes/gallery/App.svelt
   </div>
 
   <div class="window">
-    <TitleBar title="Momo" />
+    <TitleBar title="Pomodo" />
   </div>
 </div>
 

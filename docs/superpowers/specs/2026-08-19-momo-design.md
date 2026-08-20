@@ -1,4 +1,4 @@
-# Momo — Design Spec
+# Pomodo — Design Spec
 
 Date: 2026-08-19
 Source design: `Momo.dc.html` (Claude Design project `29fe5053-5dac-4265-8c33-dbbfff0f6113`)
@@ -6,7 +6,7 @@ Repo: `zhanshuyou/Pomodo`
 
 ## 1. Overview
 
-Momo is a Pomodoro timer for macOS whose timer *is* a pixel-art desktop pet. Progress
+Pomodo is a Pomodoro timer for macOS whose timer *is* a pixel-art desktop pet. Progress
 fills the cells on the pet's belly; the pet nags you to stand up, drink water and rest
 your eyes; and it keeps running on the desktop after the main window is closed.
 
@@ -312,10 +312,10 @@ Rust → all webviews, emitted on change (not per tick where avoidable):
 
 ### 6.6 Persistence
 
-Single JSON document at `$APPDATA/momo/state.json` (`app_data_dir()`), written
+Single JSON document at `$APPDATA/pomodo/state.json` (`app_data_dir()`), written
 atomically (temp file + rename), debounced to at most one write per second. Top-level
 `schema_version` field; unknown-version files are backed up rather than overwritten.
-Custom pet images live in `$APPDATA/momo/pets/`.
+Custom pet images live in `$APPDATA/pomodo/pets/`.
 
 ## 7. Frontend architecture
 
@@ -348,7 +348,7 @@ by events. Components never `invoke` directly; they call typed functions from `i
 1180 × ~660, radius 16, border `--line`, shadow `0 28px 56px -28px oklch(0.24 0.012 60 / 0.45)`.
 
 **Title bar** — 46px, `--surface-2`, bottom border. Three traffic lights
-(`oklch(0.72 0.15 25)`, `oklch(0.82 0.13 85)`, `oklch(0.78 0.14 145)`), title `Momo`,
+(`oklch(0.72 0.15 25)`, `oklch(0.82 0.13 85)`, `oklch(0.78 0.14 145)`), title `Pomodo`,
 segmented tab control (专注 / 统计 / 宠物) in a `oklch(0.92 0.008 70)` pill, and right-aligned
 `连续 12 天` · divider · `⌘,`.
 
@@ -389,7 +389,7 @@ Seeded tasks: 写产品需求文档 (进行中 · 已投入 3 个番茄, 3 pips)
   `oklch(0.93 0.008 70)` cell. Sample data `[3,5,2,6,4,0,1,5,7,4,5,6,2,5]`,
   labels 一二三四五六日 ×2. Caption `每格 = 一个番茄，颜色越深越连贯`.
 - Two insight cards: 被打断最多的时段 (`15:00–16:00，平均每轮被打断 1.8 次。要不要把这段设成「勿扰 + 只留宠物提示」？`)
-  and Momo 的评价 (tone-aware verdict)
+  and Pomodo 的评价 (tone-aware verdict)
 
 **宠物 tab**
 
@@ -403,7 +403,7 @@ Seeded tasks: 写产品需求文档 (进行中 · 已投入 3 个番茄, 3 pips)
 ### 8.2 桌面 (artboard 02)
 
 **Menu bar** — 30px, `oklch(0.22 0.015 260 / 0.55)` + `backdrop-filter: blur(20px)`.
-Left: apple dot, `Momo`, menus 文件 / 专注 / 宠物 / 窗口. Right: a pill containing an accent
+Left: apple dot, `Pomodo`, menus 文件 / 专注 / 宠物 / 窗口. Right: a pill containing an accent
 square and the live `mm:ss`, then `100%`, then the clock.
 
 **Tray popover** — 330px wide, `oklch(0.985 0.004 80 / 0.95)`, `blur(30px)`, radius 16,

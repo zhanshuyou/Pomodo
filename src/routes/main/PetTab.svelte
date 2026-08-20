@@ -112,7 +112,7 @@
       <div class="customtext">
         <span class="sectitle">或者养你自己的</span>
         <span class="blurb">
-          拖入 PNG / GIF / APNG 就成了你的宠物。可以给「专注」「休息」「催你站起来」三种状态各配一张，Momo
+          拖入 PNG / GIF / APNG 就成了你的宠物。可以给「专注」「休息」「催你站起来」三种状态各配一张，Pomodo
           自动换装；像素图会按整数倍放大，不糊。
         </span>
         <div class="chiprow">

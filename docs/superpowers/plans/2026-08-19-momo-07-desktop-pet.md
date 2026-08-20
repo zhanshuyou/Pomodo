@@ -1,8 +1,8 @@
-# Momo 07 — Desktop Pet + Reminder Overlays Implementation Plan
+# Pomodo 07 — Desktop Pet + Reminder Overlays Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Put Momo on the desktop — a draggable, edge-snapping, always-on-top pet that hides behind fullscreen apps — and render the three reminder intensities from artboard 04 as real windows: the corner bubble, the pet's hop-and-speak nudge, and the multi-display fullscreen overlay.
+**Goal:** Put Pomodo on the desktop — a draggable, edge-snapping, always-on-top pet that hides behind fullscreen apps — and render the three reminder intensities from artboard 04 as real windows: the corner bubble, the pet's hop-and-speak nudge, and the multi-display fullscreen overlay.
 
 **Architecture:** A `PlatformWindows` trait isolates every macOS-specific behaviour behind one interface, with a real implementation for macOS and a plain always-on-top fallback that keeps Linux and Windows compiling. The pet lives in its own transparent window whose position is persisted; the bubble is a small top-right window; the overlay spawns one window per connected monitor and tears them down on dismissal. Reminder firings from plan 05 finally reach the screen.
 
@@ -1003,7 +1003,7 @@ Replace `src/routes/pet/App.svelte`:
     class:dragging
     role="button"
     tabindex="0"
-    aria-label="Momo"
+    aria-label="Pomodo"
     onpointerdown={onPointerDown}
     onclick={onPoke}
     onkeydown={(e) => e.key === "Enter" && onPoke()}
