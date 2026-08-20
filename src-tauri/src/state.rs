@@ -79,6 +79,11 @@ impl AppState {
 
     pub fn emit_tick(&self, app: &AppHandle) {
         let _ = app.emit(events::TICK, self.tick_payload());
+        let title = self.with(|m| {
+            let secs = m.timer.remaining_secs;
+            format!("{:02}:{:02}", secs / 60, secs % 60)
+        });
+        crate::tray::set_title(app, &title);
     }
 
     /// Advance the clock by real elapsed time, credit any completed focus phase to the

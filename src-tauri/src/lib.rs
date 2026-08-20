@@ -4,6 +4,7 @@ pub mod events;
 pub mod model;
 pub mod state;
 pub mod store;
+pub mod tray;
 pub mod windows;
 
 use std::thread;
@@ -19,6 +20,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_positioner::init())
         .setup(|app| {
             let dir = app
                 .path()
@@ -27,6 +29,13 @@ pub fn run() {
                 .join("pomodo");
             std::fs::create_dir_all(&dir)?;
             app.manage(AppState::new(Store::new(&dir)));
+
+            tray::build(&app.handle().clone())?;
+
+            // Pomodo lives in the menu bar; once the main window is closed there is
+            // no reason for a Dock icon.
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let handle = app.handle().clone();
             thread::spawn(move || {
@@ -48,6 +57,20 @@ pub fn run() {
             });
 
             Ok(())
+        })
+        .on_window_event(|window, event| match event {
+            // Closing a real window hides it: the timer and reminders keep running,
+            // and quitting happens from the tray menu.
+            tauri::WindowEvent::CloseRequested { api, .. }
+                if matches!(window.label(), "main" | "prefs") =>
+            {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+            tauri::WindowEvent::Focused(false) if window.label() == "tray" => {
+                let _ = window.hide();
+            }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_model,
@@ -75,6 +98,10 @@ pub fn run() {
             commands::snooze_reminder,
             commands::set_deep_work,
             commands::open_prefs,
+            commands::up_next,
+            commands::today_summary,
+            commands::quit_app,
+            commands::show_main,
         ])
         .build(tauri::generate_context!())
         .expect("error while building the Pomodo application")
