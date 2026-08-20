@@ -227,3 +227,21 @@ export const openPrefs = () => invoke<void>("open_prefs");
 
 export const onReminderFire = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
   listen<FirePayload>("reminder:fire", (e) => cb(e.payload));
+
+export interface UpNextItem {
+  id: number;
+  name: string;
+  color: string;
+  due: string;
+}
+
+export interface TodaySummary {
+  pomodoros: number;
+  focusSecs: number;
+  label: string;
+}
+
+export const upNext = () => invoke<UpNextItem[]>("up_next");
+export const todaySummary = () => invoke<TodaySummary>("today_summary");
+export const quitApp = () => invoke<void>("quit_app");
+export const showMain = () => invoke<void>("show_main");

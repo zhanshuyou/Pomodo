@@ -5,6 +5,8 @@ import {
   DEFAULT_TONE,
   REMINDER_COLORS,
   barCellColor,
+  elapsedPct,
+  ringGradient,
   tone,
 } from "./theme";
 
@@ -66,5 +68,31 @@ describe("REMINDER_COLORS", () => {
       stretch: "oklch(0.7 0.12 60)",
       note: "oklch(0.62 0.07 250)",
     });
+  });
+});
+
+describe("ringGradient", () => {
+  it("matches the design's conic-gradient exactly", () => {
+    expect(ringGradient(ACCENTS.terracotta, 50)).toBe(
+      "conic-gradient(oklch(0.63 0.13 40) 50%, oklch(0.9 0.008 70) 0)",
+    );
+  });
+
+  it("clamps out-of-range percentages", () => {
+    expect(ringGradient(ACCENTS.blue, -20)).toContain(" 0%,");
+    expect(ringGradient(ACCENTS.blue, 180)).toContain(" 100%,");
+  });
+});
+
+describe("elapsedPct", () => {
+  it("reports the fraction already elapsed", () => {
+    expect(elapsedPct(1500, 750)).toBe(50);
+    expect(elapsedPct(1500, 1500)).toBe(0);
+    expect(elapsedPct(1500, 0)).toBe(100);
+    expect(elapsedPct(300, 150)).toBe(50);
+  });
+
+  it("returns zero for a zero-length phase rather than dividing by zero", () => {
+    expect(elapsedPct(0, 0)).toBe(0);
   });
 });

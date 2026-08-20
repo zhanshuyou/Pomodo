@@ -39,3 +39,19 @@ export function barCellColor(accent: string, index: number): string {
   const delta = Math.round((0.16 - index * 0.035) * 1000) / 1000;
   return `oklch(from ${accent} calc(l + ${delta}) c h)`;
 }
+
+/**
+ * The tray popover's progress ring, per the design:
+ * `conic-gradient(<accent> <pct>%, oklch(0.9 0.008 70) 0)`.
+ * `pct` is clamped to 0..100 so a mid-phase settings change cannot invert it.
+ */
+export function ringGradient(accent: string, pct: number): string {
+  const clamped = Math.max(0, Math.min(100, pct));
+  return `conic-gradient(${accent} ${clamped}%, oklch(0.9 0.008 70) 0)`;
+}
+
+/** Elapsed fraction of a phase as a percentage, 0..100. */
+export function elapsedPct(totalSecs: number, remainingSecs: number): number {
+  if (totalSecs <= 0) return 0;
+  return ((totalSecs - remainingSecs) / totalSecs) * 100;
+}
