@@ -69,8 +69,14 @@ pub fn run() {
                 api.prevent_close();
                 let _ = window.hide();
             }
-            tauri::WindowEvent::Focused(false) if window.label() == "tray" => {
+            // Clicking anywhere outside the popover dismisses it. The guard keeps
+            // this to blurs that actually close a visible popover, so a stale
+            // timestamp cannot swallow a later opening click.
+            tauri::WindowEvent::Focused(false)
+                if window.label() == "tray" && window.is_visible().unwrap_or(false) =>
+            {
                 let _ = window.hide();
+                tray::note_blur_hide();
             }
             _ => {}
         })
