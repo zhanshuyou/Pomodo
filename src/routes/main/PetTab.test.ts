@@ -5,7 +5,8 @@ import { app } from "../../lib/state.svelte";
 import PetTab from "./PetTab.svelte";
 import StatsTab from "./StatsTab.svelte";
 
-function render(Component: Parameters<typeof mount>[0]) {
+/** Both tabs take no props; naming them exactly keeps mount()'s generics happy. */
+function render(Component: typeof PetTab | typeof StatsTab) {
   const host = document.createElement("div");
   document.body.appendChild(host);
   const component = mount(Component, { target: host });
