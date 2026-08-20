@@ -3,6 +3,8 @@
   import TitleBar from "../../lib/components/TitleBar.svelte";
   import { app } from "../../lib/state.svelte";
   import FocusTab from "./FocusTab.svelte";
+  import PetTab from "./PetTab.svelte";
+  import StatsTab from "./StatsTab.svelte";
 
   const TABS = ["专注", "统计", "宠物"] as const;
   let tab = $state(0);
@@ -37,9 +39,9 @@
   {#if tab === 0}
     <FocusTab />
   {:else if tab === 1}
-    <div class="stub">统计（计划 04）</div>
+    <StatsTab />
   {:else}
-    <div class="stub">宠物（计划 04）</div>
+    <PetTab />
   {/if}
 </div>
 
@@ -86,11 +88,5 @@
     width: 1px;
     height: 14px;
     background: var(--line);
-  }
-  .stub {
-    flex: 1;
-    display: grid;
-    place-items: center;
-    color: var(--dim);
   }
 </style>
