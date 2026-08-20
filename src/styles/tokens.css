@@ -32,7 +32,11 @@
 }
 
 :root[data-platform="macos"] {
-  --titlebar-inset: 78px;
+  /* Measured on the running window: the button group spans 16 -> 74.5pt, wider
+     than the artboard's mock dots because macOS spaces them 23pt apart. 92
+     leaves ~18pt of breathing room before the title, matching the gap native
+     toolbars use. */
+  --titlebar-inset: 92px;
 }
 
 :root[data-accent="blue"] {
