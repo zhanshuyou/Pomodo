@@ -82,7 +82,10 @@ pub fn set_accent(state: State<'_, AppState>, app: AppHandle, accent: Accent) {
 
 #[tauri::command]
 pub fn set_tone(state: State<'_, AppState>, app: AppHandle, tone: Tone) {
-    state.with(|m| m.settings.tone = tone);
+    state.with(|m| {
+        m.settings.tone = tone;
+        m.retone_reminders();
+    });
     state.emit_changed(&app, Section::Settings);
     state.flush();
 }
@@ -199,4 +202,151 @@ pub fn clear_custom_pet(state: State<'_, AppState>, app: AppHandle, slot: String
     });
     state.emit_changed(&app, Section::Settings);
     state.flush();
+}
+
+use serde::Deserialize;
+
+use crate::core::reminder::{Intensity, Reminder, Rules, Schedule};
+use crate::core::reminder_copy::Builtin;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReminderPatch {
+    pub name: Option<String>,
+    pub message: Option<String>,
+    pub interval_minutes: Option<u32>,
+    pub intensity: Option<Intensity>,
+    pub enabled: Option<bool>,
+    pub rules: Option<Rules>,
+}
+
+/// Template chips from the design's 从模板抓一个 row.
+fn template_color(name: &str) -> &'static str {
+    match name {
+        "站立" => "oklch(0.63 0.13 40)",
+        "喝水" => "oklch(0.66 0.09 195)",
+        "护眼" => "oklch(0.7 0.1 145)",
+        "深呼吸" => "oklch(0.68 0.1 300)",
+        "肩颈拉伸" => "oklch(0.7 0.12 60)",
+        "记一句想法" => "oklch(0.62 0.07 250)",
+        _ => "oklch(0.63 0.13 40)",
+    }
+}
+
+#[tauri::command]
+pub fn add_reminder(state: State<'_, AppState>, app: AppHandle, template: Option<String>) -> u32 {
+    let id = state.with(|m| {
+        let id = m.next_reminder_id;
+        m.next_reminder_id += 1;
+        let name = template.clone().unwrap_or_else(|| "新提醒".to_string());
+        let color = template_color(&name).to_string();
+        m.reminders.push(Reminder::blank(id, name, color));
+        id
+    });
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+    id
+}
+
+#[tauri::command]
+pub fn update_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, patch: ReminderPatch) {
+    state.with(|m| {
+        let Some(r) = m.reminders.iter_mut().find(|r| r.id == id) else {
+            return;
+        };
+        if let Some(name) = patch.name {
+            r.name = name;
+        }
+        if let Some(message) = patch.message {
+            r.message = message;
+            // Once the user writes their own words, a tone change must not overwrite them.
+            r.message_edited = true;
+        }
+        if let Some(minutes) = patch.interval_minutes {
+            r.schedule = Schedule::Every { minutes };
+            r.remaining_secs = minutes.saturating_mul(60).max(1);
+        }
+        if let Some(intensity) = patch.intensity {
+            r.intensity = intensity;
+        }
+        if let Some(enabled) = patch.enabled {
+            r.enabled = enabled;
+        }
+        if let Some(rules) = patch.rules {
+            r.rules = rules;
+        }
+    });
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+}
+
+#[tauri::command]
+pub fn toggle_reminder(state: State<'_, AppState>, app: AppHandle, id: u32) {
+    state.with(|m| {
+        if let Some(r) = m.reminders.iter_mut().find(|r| r.id == id) {
+            r.enabled = !r.enabled;
+        }
+    });
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+}
+
+#[tauri::command]
+pub fn delete_reminder(state: State<'_, AppState>, app: AppHandle, id: u32) {
+    state.with(|m| m.reminders.retain(|r| r.id != id));
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+}
+
+/// The user did the thing. Clears the ignore streak and moves the body counters.
+#[tauri::command]
+pub fn ack_reminder(state: State<'_, AppState>, app: AppHandle, id: u32) {
+    state.with(|m| {
+        let builtin = m.reminders.iter_mut().find(|r| r.id == id).and_then(|r| {
+            r.acknowledge();
+            r.builtin
+        });
+        match builtin {
+            Some(Builtin::Water) => m.body.water_cups += 1,
+            Some(Builtin::Stand) => m.body.stands += 1,
+            _ => {}
+        }
+    });
+    state.emit_changed(&app, Section::Body);
+    state.flush();
+}
+
+#[tauri::command]
+pub fn ignore_reminder(state: State<'_, AppState>, app: AppHandle, id: u32) {
+    state.with(|m| {
+        if let Some(r) = m.reminders.iter_mut().find(|r| r.id == id) {
+            r.ignore();
+        }
+    });
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+}
+
+#[tauri::command]
+pub fn snooze_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, minutes: u32) {
+    state.with(|m| {
+        if let Some(r) = m.reminders.iter_mut().find(|r| r.id == id) {
+            r.remaining_secs = minutes.saturating_mul(60).max(1);
+            r.deferred = false;
+        }
+    });
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+}
+
+#[tauri::command]
+pub fn set_deep_work(state: State<'_, AppState>, app: AppHandle, value: bool) {
+    state.with(|m| m.deep_work = value);
+    state.emit_changed(&app, Section::Settings);
+    state.flush();
+}
+
+#[tauri::command]
+pub fn open_prefs(app: AppHandle) -> Result<(), String> {
+    crate::windows::show_prefs(&app).map_err(|e| e.to_string())
 }

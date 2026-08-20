@@ -4,6 +4,7 @@ pub mod events;
 pub mod model;
 pub mod state;
 pub mod store;
+pub mod windows;
 
 use std::thread;
 use std::time::{Duration, Instant};
@@ -65,6 +66,15 @@ pub fn run() {
             commands::set_use_custom_pet,
             commands::import_custom_pet,
             commands::clear_custom_pet,
+            commands::add_reminder,
+            commands::update_reminder,
+            commands::toggle_reminder,
+            commands::delete_reminder,
+            commands::ack_reminder,
+            commands::ignore_reminder,
+            commands::snooze_reminder,
+            commands::set_deep_work,
+            commands::open_prefs,
         ])
         .build(tauri::generate_context!())
         .expect("error while building the Momo application")
