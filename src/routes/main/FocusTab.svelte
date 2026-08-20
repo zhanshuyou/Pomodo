@@ -9,8 +9,7 @@
   import { app } from "../../lib/state.svelte";
   import TaskSidebar from "./TaskSidebar.svelte";
 
-  // Plan 04 replaces this with the user's selected pet.
-  const pet = PETS[0];
+  const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
 
   let mini = $state(false);
 
