@@ -26,3 +26,8 @@ chrono = { version = "0.4.45", features = ["serde"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-positioner = { version = "2", features = ["tray-icon"] }
 
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3", features = ["NSScreen", "NSWindow", "NSApplication", "NSGraphics", "NSResponder", "NSView"] }
+objc2-foundation = "0.3"
+coreaudio-sys = "0.2"
