@@ -20,7 +20,11 @@
         "minHeight": 660,
         "resizable": true,
         "titleBarStyle": "Overlay",
-        "hiddenTitle": true
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 16,
+          "y": 17
+        }
       },
       {
         "label": "prefs",
@@ -33,7 +37,11 @@
         "visible": false,
         "resizable": true,
         "titleBarStyle": "Overlay",
-        "hiddenTitle": true
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 16,
+          "y": 17
+        }
       },
       {
         "label": "tray",
