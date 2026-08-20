@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+use chrono::{DateTime, Datelike, Local, Timelike};
+
 use crate::core::pet::PetState;
+use crate::core::reminder::{FireContext, Reminder};
+use crate::core::reminder_copy;
 use crate::core::stats::Stats;
 use crate::core::timer::Timer;
 
@@ -101,6 +105,32 @@ pub struct Task {
     pub done: bool,
 }
 
+/// 身体这边的账 — the three bars in the 专注 tab sidebar. Reset each calendar day.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BodyCounters {
+    pub water_cups: u32,
+    pub water_goal: u32,
+    pub stands: u32,
+    pub stand_goal: u32,
+    pub longest_sit_mins: u32,
+    /// ISO date the counters belong to.
+    pub day: String,
+}
+
+impl Default for BodyCounters {
+    fn default() -> Self {
+        Self {
+            water_cups: 0,
+            water_goal: 8,
+            stands: 0,
+            stand_goal: 6,
+            longest_sit_mins: 0,
+            day: String::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
@@ -112,6 +142,59 @@ pub struct Model {
     pub stats: Stats,
     #[serde(default)]
     pub pet: PetState,
+    #[serde(default)]
+    pub reminders: Vec<Reminder>,
+    #[serde(default)]
+    pub body: BodyCounters,
+    #[serde(default)]
+    pub deep_work: bool,
+    #[serde(default)]
+    pub next_reminder_id: u32,
+}
+
+impl Model {
+    pub fn seed_reminders(&mut self) {
+        if !self.reminders.is_empty() {
+            return;
+        }
+        for builtin in reminder_copy::ALL {
+            let id = self.next_reminder_id;
+            self.next_reminder_id += 1;
+            self.reminders
+                .push(Reminder::seed(builtin, id, self.settings.tone));
+        }
+    }
+
+    pub fn retone_reminders(&mut self) {
+        let tone = self.settings.tone;
+        for reminder in &mut self.reminders {
+            reminder.retone(tone);
+        }
+    }
+
+    /// Zero the body counters when the calendar day turns over.
+    pub fn roll_body_day(&mut self, today: &str) {
+        if self.body.day == today {
+            return;
+        }
+        let goals = (self.body.water_goal, self.body.stand_goal);
+        self.body = BodyCounters {
+            water_goal: goals.0,
+            stand_goal: goals.1,
+            day: today.to_string(),
+            ..BodyCounters::default()
+        };
+    }
+
+    pub fn fire_context(&self, now: DateTime<Local>, in_meeting: bool) -> FireContext {
+        FireContext {
+            minute_of_day: (now.hour() * 60 + now.minute()) as u16,
+            weekday_index: now.weekday().num_days_from_monday() as usize,
+            in_focus: self.timer.running && self.timer.phase == Phase::Focus,
+            in_meeting,
+            deep_work: self.deep_work,
+        }
+    }
 }
 
 #[cfg(test)]
