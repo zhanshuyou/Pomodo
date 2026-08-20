@@ -89,8 +89,27 @@ describe("desktop pet", () => {
   });
 
   it("exposes the pet as a keyboard-reachable control", () => {
-    const pet = host.querySelector(".pet") as HTMLElement;
-    expect(pet.getAttribute("role")).toBe("button");
-    expect(pet.getAttribute("tabindex")).toBe("0");
+    const wrap = host.querySelector(".petwrap") as HTMLElement;
+    expect(wrap.getAttribute("role")).toBe("button");
+    expect(wrap.getAttribute("tabindex")).toBe("0");
+    expect(wrap.getAttribute("aria-label")).toContain("双击打开");
+  });
+
+  it("offers a close button that is hidden until hover", () => {
+    const close = host.querySelector(".close") as HTMLButtonElement;
+    expect(close).not.toBeNull();
+    expect(close.getAttribute("aria-label")).toBe("隐藏桌面宠物");
+  });
+
+  it("does not start a drag from a press alone, so clicks still register", () => {
+    const wrap = host.querySelector(".petwrap") as HTMLElement;
+    // A pointerdown with no movement must not put the pet into the drag state;
+    // startDragging would otherwise swallow the click that follows.
+    // jsdom has no PointerEvent; a MouseEvent of the same type dispatches fine.
+    wrap.dispatchEvent(
+      new MouseEvent("pointerdown", { button: 0, clientX: 10, clientY: 10, bubbles: true }),
+    );
+    flushSync();
+    expect(host.querySelector(".pet.dragging")).toBeNull();
   });
 });

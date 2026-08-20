@@ -1,6 +1,7 @@
 <script lang="ts">
   import Chip from "../../lib/components/Chip.svelte";
-  import { type PetFlags, setPetFlag } from "../../lib/ipc";
+  import Toggle from "../../lib/components/Toggle.svelte";
+  import { type PetFlags, setPetFlag, setPetVisible } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
 
   const FLAGS: { key: keyof PetFlags; name: string }[] = [
@@ -12,6 +13,16 @@
 </script>
 
 <div class="pane">
+  <h3>桌面宠物</h3>
+  <div class="row">
+    <span>在桌面上显示宠物</span>
+    <Toggle
+      checked={app.settings.petVisible}
+      onchange={(v) => void setPetVisible(v)}
+      label="显示桌面宠物"
+    />
+  </div>
+
   <h3>桌面行为</h3>
   <div class="chips">
     {#each FLAGS as flag (flag.key)}
@@ -44,6 +55,14 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 480px;
+    font-size: 12.5px;
+    color: oklch(0.42 0.012 60);
   }
   .note {
     margin: 0;

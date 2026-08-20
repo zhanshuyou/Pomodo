@@ -7,6 +7,7 @@
   import {
     type FirePayload,
     ackReminder,
+    hidePet,
     onPetNudge,
     setPetPlacement,
     showMain,
@@ -15,10 +16,18 @@
   import { app } from "../../lib/state.svelte";
 
   const NUDGE_MS = 12_000;
+  /** Pointer travel that turns a press into a drag rather than a click. */
+  const DRAG_SLOP_PX = 4;
+  /** Two clicks inside this window count as a double-click. */
+  const DOUBLE_CLICK_MS = 400;
 
   let nudge = $state<FirePayload | null>(null);
   let dragging = $state(false);
   let nudgeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  let pressOrigin: { x: number; y: number } | null = null;
+  let dragStarted = false;
+  let lastClickAt = 0;
 
   const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
   const bubbleText = $derived(
@@ -44,50 +53,101 @@
   });
 
   /**
-   * startDragging moves the window natively; when it finishes we read the final
-   * position back and hand it to Rust, which applies edge snapping and stores it.
+   * The drag is deliberately deferred until the pointer actually moves.
+   * `startDragging` hands the mouse loop to macOS, which swallows every
+   * subsequent click — so starting it on pointerdown would make clicks and
+   * double-clicks impossible to detect.
    */
-  async function onPointerDown(event: PointerEvent) {
+  function onPointerDown(event: PointerEvent) {
     if (event.button !== 0) return;
+    pressOrigin = { x: event.clientX, y: event.clientY };
+    dragStarted = false;
+  }
+
+  function onPointerMove(event: PointerEvent) {
+    if (!pressOrigin || dragStarted) return;
+    const dx = event.clientX - pressOrigin.x;
+    const dy = event.clientY - pressOrigin.y;
+    if (Math.hypot(dx, dy) < DRAG_SLOP_PX) return;
+    dragStarted = true;
+    void beginDrag();
+  }
+
+  async function beginDrag() {
     dragging = true;
     const win = getCurrentWindow();
     await win.startDragging();
+    // Read the position back once the native drag finishes; Rust applies edge
+    // snapping and stores it.
     const pos = await win.outerPosition();
     const scale = await win.scaleFactor();
     dragging = false;
+    pressOrigin = null;
     await setPetPlacement(pos.x / scale, pos.y / scale);
   }
 
-  function onPoke() {
+  function onPointerUp() {
+    const wasPress = pressOrigin !== null && !dragStarted;
+    pressOrigin = null;
+    if (!wasPress) return;
     if (!app.settings.petFlags.clickInteract) return;
+
+    // A pending nudge is answered by a single click — it is a direct reply to a
+    // prompt, not something you hit by accident.
     if (nudge) {
       void ackReminder(nudge.id);
       nudge = null;
+      lastClickAt = 0;
       return;
     }
-    void showMain();
+
+    const now = Date.now();
+    if (now - lastClickAt < DOUBLE_CLICK_MS) {
+      lastClickAt = 0;
+      void showMain();
+    } else {
+      lastClickAt = now;
+    }
+  }
+
+  function onKey(event: KeyboardEvent) {
+    if (event.key === "Enter") void showMain();
   }
 </script>
 
 <div class="stage">
   <div
-    class="pet"
-    class:dragging
+    class="petwrap"
     role="button"
     tabindex="0"
-    aria-label={pet.name}
+    aria-label="{pet.name}（双击打开 Pomodo）"
     onpointerdown={onPointerDown}
-    onclick={onPoke}
-    onkeydown={(e) => e.key === "Enter" && onPoke()}
+    onpointermove={onPointerMove}
+    onpointerup={onPointerUp}
+    onkeydown={onKey}
   >
-    <PetCanvas
-      map={pet.map}
-      body={pet.body}
-      scale={8}
-      anim={nudge ? "hop" : "bob"}
-      alt={pet.name}
-    />
-    <div class="shadow"></div>
+    <div class="pet" class:dragging>
+      <PetCanvas
+        map={pet.map}
+        body={pet.body}
+        scale={8}
+        anim={nudge ? "hop" : "bob"}
+        alt={pet.name}
+      />
+      <div class="shadow"></div>
+    </div>
+
+    <button
+      class="close"
+      type="button"
+      aria-label="隐藏桌面宠物"
+      title="隐藏桌面宠物（可从菜单栏找回）"
+      onpointerdown={(e) => e.stopPropagation()}
+      onpointerup={(e) => e.stopPropagation()}
+      onclick={() => void hidePet()}
+    >
+      ×
+    </button>
   </div>
 
   <div class="bubble" class:nudging={!!nudge}>{bubbleText}</div>
@@ -106,15 +166,20 @@
     padding: 8px;
     height: 100vh;
   }
-  .pet {
+  .petwrap {
     position: relative;
     width: 128px;
     height: 128px;
     flex: none;
-    cursor: grab;
     background: transparent;
     border: none;
     padding: 0;
+  }
+  .pet {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
   }
   .pet.dragging {
     cursor: grabbing;
@@ -128,6 +193,33 @@
     border-radius: 50%;
     background: oklch(0.2 0.02 260 / 0.4);
     filter: blur(4px);
+  }
+  /* Stays out of the way until you go looking for it. */
+  .close {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: oklch(0.24 0.012 60 / 0.55);
+    color: oklch(0.99 0.004 80);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    display: grid;
+    place-items: center;
+    padding: 0;
+  }
+  .petwrap:hover .close,
+  .close:focus-visible {
+    opacity: 1;
+  }
+  .close:hover {
+    background: oklch(0.24 0.012 60 / 0.8);
   }
   .bubble {
     margin-bottom: 4px;

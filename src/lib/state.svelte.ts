@@ -34,6 +34,7 @@ const FALLBACK: Model = {
       hideFullscreen: true,
       sleepAnimation: false,
     },
+    petVisible: true,
   },
   nextTaskId: 0,
   stats: { sessions: [], bestStreak: 0 },

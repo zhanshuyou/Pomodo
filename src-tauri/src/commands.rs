@@ -490,13 +490,29 @@ pub fn set_pet_placement(state: State<'_, AppState>, app: AppHandle, x: f64, y: 
 }
 
 #[tauri::command]
-pub fn show_pet(app: AppHandle) -> Result<(), String> {
+pub fn show_pet(state: State<'_, AppState>, app: AppHandle) -> Result<(), String> {
+    set_pet_visible(state, app.clone(), true);
     crate::windows::ensure_pet(&app).map_err(|e| e.to_string())
 }
 
+/// Dismiss the desktop pet. The choice persists, so neither the per-tick
+/// visibility sync nor the next launch brings it back uninvited.
 #[tauri::command]
-pub fn hide_pet(app: AppHandle) {
+pub fn hide_pet(state: State<'_, AppState>, app: AppHandle) {
+    set_pet_visible(state, app.clone(), false);
     crate::windows::hide_pet(&app);
+}
+
+#[tauri::command]
+pub fn set_pet_visible(state: State<'_, AppState>, app: AppHandle, value: bool) {
+    state.with(|m| m.settings.pet_visible = value);
+    state.emit_changed(&app, Section::Settings);
+    state.flush();
+    if value {
+        let _ = crate::windows::ensure_pet(&app);
+    } else {
+        crate::windows::hide_pet(&app);
+    }
 }
 
 #[tauri::command]

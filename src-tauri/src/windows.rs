@@ -75,9 +75,20 @@ pub fn primary_screen_rect(app: &AppHandle) -> ScreenRect {
         })
 }
 
+/// True unless the user has dismissed the pet.
+fn pet_wanted(app: &AppHandle) -> bool {
+    app.try_state::<crate::state::AppState>()
+        .map(|s| s.with(|m| m.settings.pet_visible))
+        .unwrap_or(true)
+}
+
 /// Create the pet window if needed, give it the desktop layer treatment, and put
-/// it back where the user left it.
+/// it back where the user left it. Does nothing while the pet is dismissed.
 pub fn ensure_pet(app: &AppHandle) -> tauri::Result<()> {
+    if !pet_wanted(app) {
+        hide_pet(app);
+        return Ok(());
+    }
     let window = match app.get_webview_window("pet") {
         Some(w) => w,
         None => WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("pet.html".into()))

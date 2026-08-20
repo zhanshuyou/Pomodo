@@ -113,6 +113,7 @@ pub fn run() {
             commands::set_pet_placement,
             commands::show_pet,
             commands::hide_pet,
+            commands::set_pet_visible,
             commands::hide_bubble,
             commands::dismiss_overlay,
         ])
