@@ -1,5 +1,7 @@
 pub mod core;
+pub mod events;
 pub mod model;
+pub mod state;
 pub mod store;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
