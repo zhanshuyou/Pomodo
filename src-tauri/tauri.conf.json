@@ -12,9 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "Pomodo",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "Momo",
+        "width": 1180,
+        "height": 700,
+        "minWidth": 1180,
+        "minHeight": 660,
+        "resizable": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
       }
     ],
     "security": {
