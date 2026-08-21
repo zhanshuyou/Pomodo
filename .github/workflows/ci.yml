@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v7
 
       # Reads the version from package.json's packageManager field.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v7
         with:
@@ -32,6 +32,9 @@ jobs:
 
       - name: Type-check (svelte-check + tsc)
         run: pnpm check
+
+      - name: Test
+        run: pnpm test
 
       - name: Build
         run: pnpm build
@@ -87,7 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v7
         with:

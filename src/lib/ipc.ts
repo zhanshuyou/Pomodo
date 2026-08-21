@@ -92,12 +92,23 @@ export const setTone = (tone: Tone) => invoke<void>("set_tone", { tone });
 export const setPetFlag = (flag: keyof PetFlags, value: boolean) =>
   invoke<void>("set_pet_flag", { flag, value });
 
+/**
+ * Every window subscribes in onMount, including the ones rendered outside Tauri
+ * — vitest and gallery.html. There is no event bridge there, so subscribing has
+ * to be a no-op handing back a no-op unlisten; otherwise each mount leaves a
+ * rejection nobody is positioned to catch.
+ */
+function subscribe<T>(event: string, cb: (p: T) => void): Promise<UnlistenFn> {
+  if (!IS_TAURI) return Promise.resolve(() => {});
+  return listen<T>(event, (e) => cb(e.payload));
+}
+
 export const onTick = (cb: (p: TickPayload) => void): Promise<UnlistenFn> =>
-  listen<TickPayload>("timer:tick", (e) => cb(e.payload));
+  subscribe<TickPayload>("timer:tick", cb);
 export const onPhase = (cb: (p: PhaseChange) => void): Promise<UnlistenFn> =>
-  listen<PhaseChange>("timer:phase", (e) => cb(e.payload));
+  subscribe<PhaseChange>("timer:phase", cb);
 export const onChanged = (cb: (p: ChangedPayload) => void): Promise<UnlistenFn> =>
-  listen<ChangedPayload>("model:changed", (e) => cb(e.payload));
+  subscribe<ChangedPayload>("model:changed", cb);
 
 export interface DayBar {
   label: string;
@@ -229,7 +240,7 @@ export const setDeepWork = (value: boolean) => invoke<void>("set_deep_work", { v
 export const openPrefs = () => invoke<void>("open_prefs");
 
 export const onReminderFire = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
-  listen<FirePayload>("reminder:fire", (e) => cb(e.payload));
+  subscribe<FirePayload>("reminder:fire", cb);
 
 export interface UpNextItem {
   id: number;
@@ -268,10 +279,10 @@ export const dismissOverlay = (id: number, acknowledged: boolean) =>
   invoke<void>("dismiss_overlay", { id, acknowledged });
 
 export const onPetNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
-  listen<FirePayload>("pet:nudge", (e) => cb(e.payload));
+  subscribe<FirePayload>("pet:nudge", cb);
 export const onMiniNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
-  listen<FirePayload>("mini:nudge", (e) => cb(e.payload));
+  subscribe<FirePayload>("mini:nudge", cb);
 export const onBubbleShow = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
-  listen<FirePayload>("bubble:show", (e) => cb(e.payload));
+  subscribe<FirePayload>("bubble:show", cb);
 export const onOverlayShow = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
-  listen<FirePayload>("overlay:show", (e) => cb(e.payload));
+  subscribe<FirePayload>("overlay:show", cb);

@@ -6,6 +6,7 @@
   import {
     type TodaySummary,
     type UpNextItem,
+    IS_TAURI,
     openPrefs,
     pause,
     showMain,
@@ -34,6 +35,10 @@
   const pct = $derived(elapsedPct(totalSecs, app.timer.remainingSecs));
 
   async function refreshLists() {
+    // Both are Tauri-only reads. Outside it — vitest, gallery.html — there is
+    // nothing to fetch, and the invoke would reject on an interval nobody
+    // awaits, which surfaces as an unhandled rejection rather than a failure.
+    if (!IS_TAURI) return;
     [next, today] = await Promise.all([upNext(), todaySummary()]);
   }
 

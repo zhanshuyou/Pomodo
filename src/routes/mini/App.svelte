@@ -80,12 +80,10 @@
 
   onMount(() => {
     void app.init();
-    // Outside Tauri (vitest) there is no event bridge to subscribe to; tests
-    // drive receiveNudge directly instead.
-    const un = IS_TAURI ? onMiniNudge(receiveNudge) : null;
+    const un = onMiniNudge(receiveNudge);
     return () => {
       clearTimeout(nudgeTimer);
-      void un?.then((f) => f());
+      void un.then((f) => f());
       app.dispose();
     };
   });
