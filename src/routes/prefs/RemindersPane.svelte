@@ -5,6 +5,7 @@
   import {
     type Intensity,
     addReminder,
+    deleteReminder,
     toggleReminder,
     updateReminder,
   } from "../../lib/ipc";
@@ -31,6 +32,22 @@
 
   let editId = $state<number | null>(null);
   let advanced = $state(false);
+  /** The one row currently asking whether it should really go. */
+  let confirmingId = $state<number | null>(null);
+
+  function select(id: number) {
+    editId = id;
+    // Moving on abandons the question; a row left mid-confirmation somewhere
+    // else in the list is a trap waiting to be clicked.
+    confirmingId = null;
+  }
+
+  function confirmDelete(id: number) {
+    // Editing follows the list, so hand the editor back to whatever survives.
+    if (editId === id) editId = null;
+    confirmingId = null;
+    void deleteReminder(id);
+  }
 
   const editing = $derived(
     app.reminders.find((r) => r.id === editId) ?? app.reminders[0] ?? null,
@@ -111,24 +128,69 @@
       <div
         class="rem"
         class:sel={editing?.id === r.id}
+        class:confirming={confirmingId === r.id}
         role="button"
         tabindex="0"
-        onclick={() => (editId = r.id)}
-        onkeydown={(e) => e.key === "Enter" && (editId = r.id)}
+        onclick={() => select(r.id)}
+        onkeydown={(e) => {
+          if (e.key === "Enter") select(r.id);
+          if (e.key === "Escape") confirmingId = null;
+        }}
       >
         <span class="tile" style:background={r.color} style:opacity={r.enabled ? 1 : 0.28}
         ></span>
-        <div class="remtext">
-          <span class="remname">{r.name}</span>
-          <span class="remdetail">{r.detail}</span>
-        </div>
-        <Toggle
-          checked={r.enabled}
-          onchange={() => void toggleReminder(r.id)}
-          label="{r.name} 开关"
-        />
+
+        {#if confirmingId === r.id}
+          <span class="confirm-ask">删掉「{r.name}」？</span>
+          <button
+            class="confirm-yes"
+            type="button"
+            onclick={(e) => {
+              e.stopPropagation();
+              confirmDelete(r.id);
+            }}
+          >
+            删除
+          </button>
+          <button
+            class="confirm-no"
+            type="button"
+            onclick={(e) => {
+              e.stopPropagation();
+              confirmingId = null;
+            }}
+          >
+            算了
+          </button>
+        {:else}
+          <div class="remtext">
+            <span class="remname">{r.name}</span>
+            <span class="remdetail">{r.detail}</span>
+          </div>
+          <Toggle
+            checked={r.enabled}
+            onchange={() => void toggleReminder(r.id)}
+            label="{r.name} 开关"
+          />
+          <button
+            class="del"
+            type="button"
+            aria-label="删除{r.name}"
+            title="删除"
+            onclick={(e) => {
+              e.stopPropagation();
+              confirmingId = r.id;
+            }}
+          >
+            ×
+          </button>
+        {/if}
       </div>
     {/each}
+
+    {#if app.reminders.length === 0}
+      <p class="remempty">还没有提醒，从上面抓一个模板</p>
+    {/if}
   </section>
 </div>
 
@@ -281,6 +343,77 @@
   .rem.sel {
     border-color: var(--accent);
     background: oklch(0.975 0.008 70);
+  }
+  .rem.confirming {
+    border-color: oklch(0.62 0.16 25);
+    background: oklch(0.975 0.012 30);
+  }
+  /* Stays out of the way until you go looking for it, like the pet's own
+     dismiss button — a row of permanent × turns a list into a minefield. */
+  .del {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--faint);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition:
+      opacity 0.15s ease,
+      background 0.15s ease;
+    display: grid;
+    place-items: center;
+  }
+  .rem:hover .del,
+  .del:focus-visible {
+    opacity: 1;
+  }
+  .del:hover {
+    background: oklch(0.93 0.02 25);
+    color: oklch(0.5 0.16 25);
+  }
+  .confirm-ask {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .confirm-yes,
+  .confirm-no {
+    flex: none;
+    padding: 5px 11px;
+    border-radius: var(--radius-chip);
+    border: 1px solid var(--line);
+    background: var(--card);
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .confirm-yes {
+    border-color: oklch(0.62 0.16 25);
+    background: oklch(0.62 0.16 25);
+    color: oklch(0.99 0.004 80);
+  }
+  .confirm-yes:hover {
+    background: oklch(0.55 0.16 25);
+  }
+  .confirm-no:hover {
+    background: var(--surface-2);
+  }
+  .remempty {
+    margin: 0;
+    padding: 14px 13px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-control);
+    font-size: 12.5px;
+    color: var(--faint);
   }
   .tile {
     width: 26px;

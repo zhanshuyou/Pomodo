@@ -198,4 +198,77 @@ describe("RemindersPane", () => {
     const field = host.querySelector(".message") as HTMLTextAreaElement;
     expect(field.value).toBe("再坐下去你就要跟椅子长在一起了，起来！");
   });
+
+  // The delete itself goes through invoke, which cannot run under jsdom, so
+  // these cover everything up to the point of no return. delete_reminder's own
+  // behaviour is covered on the Rust side.
+  it("offers a delete control on every reminder, resting out of the way", () => {
+    expect(host.querySelectorAll(".rem .del")).toHaveLength(3);
+    expect(host.querySelector(".rem.confirming")).toBeNull();
+  });
+
+  it("asks before deleting, naming the reminder, and deletes nothing yet", () => {
+    const del = host.querySelectorAll(".rem .del")[1] as HTMLButtonElement;
+    del.click();
+    flushSync();
+
+    expect(host.querySelector(".confirm-ask")?.textContent).toBe("删掉「喝水」？");
+    expect(host.querySelectorAll(".rem.confirming")).toHaveLength(1);
+    // Still all three: asking is not doing.
+    expect(host.querySelectorAll(".rem")).toHaveLength(3);
+    expect(app.reminders).toHaveLength(3);
+  });
+
+  it("backs out of the confirmation without touching the list", () => {
+    (host.querySelectorAll(".rem .del")[1] as HTMLButtonElement).click();
+    flushSync();
+    (host.querySelector(".confirm-no") as HTMLButtonElement).click();
+    flushSync();
+
+    expect(host.querySelector(".rem.confirming")).toBeNull();
+    expect(host.querySelectorAll(".rem")).toHaveLength(3);
+  });
+
+  it("does not select a reminder for editing when its delete is clicked", () => {
+    (host.querySelectorAll(".rem .del")[1] as HTMLButtonElement).click();
+    flushSync();
+    // Still editing the first one, not the one being deleted.
+    expect(host.querySelector(".col3 .sectitle")?.textContent).toBe(
+      "编辑「站起来动一动」",
+    );
+  });
+
+  it("drops the confirmation when another reminder is selected", () => {
+    (host.querySelectorAll(".rem .del")[1] as HTMLButtonElement).click();
+    flushSync();
+    (host.querySelectorAll(".rem")[2] as HTMLElement).click();
+    flushSync();
+
+    expect(host.querySelector(".rem.confirming")).toBeNull();
+  });
+});
+
+describe("RemindersPane with nothing left", () => {
+  let host: HTMLDivElement;
+  let component: Record<string, unknown>;
+
+  beforeEach(() => {
+    app.model.reminders = [];
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    component = mount(RemindersPane, { target: host });
+    flushSync();
+  });
+
+  afterEach(() => {
+    void unmount(component);
+    host.remove();
+  });
+
+  it("says so rather than leaving the editor column blank and broken-looking", () => {
+    expect(host.querySelectorAll(".rem")).toHaveLength(0);
+    expect(host.querySelector(".remempty")?.textContent).toBe(
+      "还没有提醒，从上面抓一个模板",
+    );
+  });
 });
