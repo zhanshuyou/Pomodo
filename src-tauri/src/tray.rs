@@ -53,9 +53,21 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         pet_visible,
         None::<&str>,
     )?;
+    let mini_enabled = app
+        .try_state::<crate::state::AppState>()
+        .map(|s| s.with(|m| m.mini_enabled))
+        .unwrap_or(false);
+    let mini = CheckMenuItem::with_id(
+        app,
+        "toggle_mini",
+        "迷你模式",
+        true,
+        mini_enabled,
+        Some("Cmd+Alt+M"),
+    )?;
     let prefs = MenuItem::with_id(app, "prefs", "设置…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出 Pomodo", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &pet, &prefs, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &mini, &pet, &prefs, &quit])?;
 
     TrayIconBuilder::with_id(TRAY_ID)
         // The menu-bar mark is a macOS template image: shape in the alpha channel
@@ -85,6 +97,9 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
                 } else {
                     windows::hide_pet(app);
                 }
+            }
+            "toggle_mini" => {
+                let _ = windows::toggle_mini(app);
             }
             "prefs" => {
                 let _ = windows::show_prefs(app);

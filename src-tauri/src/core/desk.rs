@@ -2,10 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::Phase;
 
-/// Top-left corner of the pet window, in logical screen coordinates.
+/// Top-left corner of a desktop-layer window (the pet, the mini bar), in
+/// logical screen coordinates.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PetPlacement {
+pub struct Placement {
     pub x: f64,
     pub y: f64,
 }
@@ -22,14 +23,10 @@ pub struct ScreenRect {
 pub const SNAP_THRESHOLD: f64 = 48.0;
 
 /// Keep the whole pet inside the screen it belongs to.
-pub fn clamp_to_screen(
-    placement: PetPlacement,
-    pet: (f64, f64),
-    screen: ScreenRect,
-) -> PetPlacement {
+pub fn clamp_to_screen(placement: Placement, pet: (f64, f64), screen: ScreenRect) -> Placement {
     let max_x = screen.x + (screen.width - pet.0).max(0.0);
     let max_y = screen.y + (screen.height - pet.1).max(0.0);
-    PetPlacement {
+    Placement {
         x: placement.x.clamp(screen.x, max_x),
         y: placement.y.clamp(screen.y, max_y),
     }
@@ -38,7 +35,7 @@ pub fn clamp_to_screen(
 /// 贴边吸附 — pull the pet flush against whichever edge it was dropped near.
 /// Horizontal and vertical are decided independently, and when both edges on one
 /// axis are within reach the nearer one wins.
-pub fn snap(placement: PetPlacement, pet: (f64, f64), screen: ScreenRect) -> PetPlacement {
+pub fn snap(placement: Placement, pet: (f64, f64), screen: ScreenRect) -> Placement {
     let placement = clamp_to_screen(placement, pet, screen);
 
     let left_gap = placement.x - screen.x;
@@ -65,7 +62,26 @@ pub fn snap(placement: PetPlacement, pet: (f64, f64), screen: ScreenRect) -> Pet
         placement.y
     };
 
-    PetPlacement { x, y }
+    Placement { x, y }
+}
+
+/// 条形 — the mini bar's resting size, straight off the artboard.
+pub const MINI_SIZE: (f64, f64) = (260.0, 52.0);
+/// However long a reminder is, the bar stops being a bar past this.
+pub const MINI_MAX_HEIGHT: f64 = 260.0;
+
+/// The bar measures itself and asks for a height, because how tall a reminder
+/// renders depends on the message, the font and the user's text size — none of
+/// which Rust can see. This only keeps that request sane.
+pub fn clamp_mini_height(height: f64) -> f64 {
+    height.clamp(MINI_SIZE.1, MINI_MAX_HEIGHT)
+}
+
+/// Whether the desktop pet belongs on screen at all. Mini mode carries its own
+/// 35px cat in the bar, so a second one on the desktop would just be a duplicate
+/// — but a pet the user dismissed stays dismissed once mini mode ends.
+pub fn pet_should_show(pet_visible: bool, mini_enabled: bool) -> bool {
+    pet_visible && !mini_enabled
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -117,7 +133,7 @@ mod tests {
 
     #[test]
     fn a_pet_near_the_left_edge_snaps_flush_to_it() {
-        let out = snap(PetPlacement { x: 20.0, y: 400.0 }, PET, screen());
+        let out = snap(Placement { x: 20.0, y: 400.0 }, PET, screen());
         assert_eq!(out.x, 0.0);
         assert_eq!(out.y, 400.0);
     }
@@ -125,7 +141,7 @@ mod tests {
     #[test]
     fn a_pet_near_the_right_edge_snaps_flush_to_it() {
         let out = snap(
-            PetPlacement {
+            Placement {
                 x: 1300.0,
                 y: 400.0,
             },
@@ -137,13 +153,13 @@ mod tests {
 
     #[test]
     fn a_pet_near_the_bottom_edge_snaps_flush_to_it() {
-        let out = snap(PetPlacement { x: 600.0, y: 800.0 }, PET, screen());
+        let out = snap(Placement { x: 600.0, y: 800.0 }, PET, screen());
         assert_eq!(out.y, 900.0 - 128.0);
     }
 
     #[test]
     fn a_pet_in_open_space_does_not_move() {
-        let placement = PetPlacement { x: 600.0, y: 400.0 };
+        let placement = Placement { x: 600.0, y: 400.0 };
         let out = snap(placement, PET, screen());
         assert_eq!(out.x, 600.0);
         assert_eq!(out.y, 400.0);
@@ -158,7 +174,7 @@ mod tests {
             width: 200.0,
             height: 900.0,
         };
-        let out = snap(PetPlacement { x: 60.0, y: 400.0 }, PET, narrow);
+        let out = snap(Placement { x: 60.0, y: 400.0 }, PET, narrow);
         // Left gap 60, right gap 200 - 128 - 60 = 12 -> snap right.
         assert_eq!(out.x, 72.0);
     }
@@ -166,7 +182,7 @@ mod tests {
     #[test]
     fn clamp_pulls_an_off_screen_pet_back_into_view() {
         let out = clamp_to_screen(
-            PetPlacement {
+            Placement {
                 x: -400.0,
                 y: 5000.0,
             },
@@ -185,8 +201,62 @@ mod tests {
             width: 1920.0,
             height: 1080.0,
         };
-        let out = clamp_to_screen(PetPlacement { x: 1000.0, y: 0.0 }, PET, secondary);
+        let out = clamp_to_screen(Placement { x: 1000.0, y: 0.0 }, PET, secondary);
         assert_eq!(out.x, 1440.0);
+    }
+
+    const BAR: (f64, f64) = (260.0, 52.0);
+
+    #[test]
+    fn the_mini_bar_snaps_flush_to_the_top_right_corner() {
+        // Dropped near the top-right, the way the design parks it.
+        let out = snap(
+            Placement {
+                x: 1440.0 - 260.0 - 30.0,
+                y: 22.0,
+            },
+            BAR,
+            screen(),
+        );
+        assert_eq!(out.x, 1440.0 - 260.0);
+        assert_eq!(out.y, 0.0);
+    }
+
+    #[test]
+    fn a_resting_bar_keeps_the_artboards_height() {
+        assert_eq!(clamp_mini_height(52.0), 52.0);
+    }
+
+    #[test]
+    fn a_bar_carrying_a_two_line_reminder_grows_to_fit_it() {
+        assert_eq!(clamp_mini_height(127.0), 127.0);
+    }
+
+    #[test]
+    fn a_bar_can_never_shrink_below_its_own_row() {
+        // A measurement taken before layout settles reports 0.
+        assert_eq!(clamp_mini_height(0.0), 52.0);
+    }
+
+    #[test]
+    fn a_runaway_measurement_cannot_turn_the_bar_into_a_curtain() {
+        assert_eq!(clamp_mini_height(9000.0), MINI_MAX_HEIGHT);
+    }
+
+    #[test]
+    fn the_pet_shows_when_it_is_wanted_and_mini_mode_is_off() {
+        assert!(pet_should_show(true, false));
+    }
+
+    #[test]
+    fn mini_mode_takes_the_pet_off_screen_even_when_it_is_wanted() {
+        // The mini bar carries its own 35px cat; a second one would be a duplicate.
+        assert!(!pet_should_show(true, true));
+    }
+
+    #[test]
+    fn a_dismissed_pet_stays_dismissed_when_mini_mode_ends() {
+        assert!(!pet_should_show(false, false));
     }
 
     #[test]

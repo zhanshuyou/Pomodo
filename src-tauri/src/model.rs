@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use chrono::{DateTime, Datelike, Local, Timelike};
 
-use crate::core::desk::PetPlacement;
+use crate::core::desk::Placement;
 use crate::core::pet::PetState;
 use crate::core::reminder::{FireContext, Reminder};
 use crate::core::reminder_copy;
@@ -162,7 +162,12 @@ pub struct Model {
     #[serde(default)]
     pub next_reminder_id: u32,
     #[serde(default)]
-    pub pet_placement: Option<PetPlacement>,
+    pub pet_placement: Option<Placement>,
+    /// 迷你模式 — the main window is put away and only the bar is left.
+    #[serde(default)]
+    pub mini_enabled: bool,
+    #[serde(default)]
+    pub mini_placement: Option<Placement>,
 }
 
 impl Model {

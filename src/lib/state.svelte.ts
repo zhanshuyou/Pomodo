@@ -55,6 +55,8 @@ const FALLBACK: Model = {
   },
   deepWork: false,
   nextReminderId: 0,
+  miniEnabled: false,
+  miniPlacement: null,
 };
 
 class AppStore {
@@ -86,6 +88,9 @@ class AppStore {
   }
   get deepWork() {
     return this.model.deepWork;
+  }
+  get miniEnabled() {
+    return this.model.miniEnabled;
   }
   get tone(): Tone {
     return this.model.settings.tone;

@@ -4,14 +4,12 @@
   import SpeechBubble from "../../lib/components/SpeechBubble.svelte";
   import { miniLabel, petLine, phaseLabel, runLabel } from "../../lib/copy";
   import { endsAt, minutesLeft, mmss } from "../../lib/format";
-  import { pause, skipPhase, start } from "../../lib/ipc";
+  import { pause, skipPhase, start, toggleMiniMode } from "../../lib/ipc";
   import { PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
   import TaskSidebar from "./TaskSidebar.svelte";
 
   const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
-
-  let mini = $state(false);
 
   const remaining = $derived(app.timer.remainingSecs);
   const cells = $derived(app.bellyCells);
@@ -54,8 +52,8 @@
     <div class="actions">
       <PixelButton onclick={toggleRun}>{runLabel(app.timer.running)}</PixelButton>
       <PixelButton variant="secondary" onclick={() => void skipPhase()}>跳过</PixelButton>
-      <PixelButton variant="secondary" onclick={() => (mini = !mini)}>
-        {miniLabel(mini)}
+      <PixelButton variant="secondary" onclick={() => void toggleMiniMode()}>
+        {miniLabel(app.miniEnabled)}
       </PixelButton>
     </div>
 

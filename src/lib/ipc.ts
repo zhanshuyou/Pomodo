@@ -50,6 +50,8 @@ export interface Model {
   body: BodyCounters;
   deepWork: boolean;
   nextReminderId: number;
+  miniEnabled: boolean;
+  miniPlacement: { x: number; y: number } | null;
 }
 
 export interface TickPayload {
@@ -247,6 +249,14 @@ export const todaySummary = () => invoke<TodaySummary>("today_summary");
 export const quitApp = () => invoke<void>("quit_app");
 export const showMain = () => invoke<void>("show_main");
 
+export const setMiniMode = (value: boolean) =>
+  invoke<void>("set_mini_mode", { value });
+export const toggleMiniMode = () => invoke<void>("toggle_mini_mode");
+export const setMiniHeight = (height: number) =>
+  invoke<void>("set_mini_height", { height });
+export const setMiniPlacement = (x: number, y: number) =>
+  invoke<void>("set_mini_placement", { x, y });
+
 export const setPetPlacement = (x: number, y: number) =>
   invoke<void>("set_pet_placement", { x, y });
 export const showPet = () => invoke<void>("show_pet");
@@ -259,6 +269,8 @@ export const dismissOverlay = (id: number, acknowledged: boolean) =>
 
 export const onPetNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
   listen<FirePayload>("pet:nudge", (e) => cb(e.payload));
+export const onMiniNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
+  listen<FirePayload>("mini:nudge", (e) => cb(e.payload));
 export const onBubbleShow = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
   listen<FirePayload>("bubble:show", (e) => cb(e.payload));
 export const onOverlayShow = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>

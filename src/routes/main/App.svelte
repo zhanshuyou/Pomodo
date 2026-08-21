@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import TitleBar from "../../lib/components/TitleBar.svelte";
-  import { openPrefs } from "../../lib/ipc";
+  import { openPrefs, toggleMiniMode } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
   import FocusTab from "./FocusTab.svelte";
   import PetTab from "./PetTab.svelte";
@@ -16,6 +16,13 @@
       if ((e.metaKey || e.ctrlKey) && e.key === ",") {
         e.preventDefault();
         void openPrefs();
+        return;
+      }
+      // ⌘⌥M is also registered globally; this is the in-window path for when
+      // Pomodo already has focus.
+      if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === "KeyM") {
+        e.preventDefault();
+        void toggleMiniMode();
       }
     };
     window.addEventListener("keydown", onKey);

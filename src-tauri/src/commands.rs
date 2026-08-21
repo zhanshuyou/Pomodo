@@ -472,13 +472,45 @@ mod tests {
     }
 }
 
-use crate::core::desk::{snap, PetPlacement};
+use crate::core::desk::{snap, Placement};
+
+#[tauri::command]
+pub fn set_mini_mode(app: AppHandle, value: bool) -> Result<(), String> {
+    crate::windows::set_mini(&app, value).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn toggle_mini_mode(app: AppHandle) -> Result<(), String> {
+    crate::windows::toggle_mini(&app).map_err(|e| e.to_string())
+}
+
+/// The bar reports the height it rendered at, growing around a reminder and
+/// shrinking back once that reminder is answered or times out.
+#[tauri::command]
+pub fn set_mini_height(app: AppHandle, height: f64) {
+    crate::windows::set_mini_height(&app, height);
+}
+
+#[tauri::command]
+pub fn set_mini_placement(state: State<'_, AppState>, app: AppHandle, x: f64, y: f64) {
+    let snap_edges = state.with(|m| m.settings.pet_flags.snap_edges);
+    let screen = crate::windows::primary_screen_rect(&app);
+    let mut placement = Placement { x, y };
+    if snap_edges {
+        placement = snap(placement, crate::windows::MINI_SIZE, screen);
+    }
+    state.with(|m| m.mini_placement = Some(placement));
+    if let Some(window) = tauri::Manager::get_webview_window(&app, "mini") {
+        let _ = window.set_position(tauri::LogicalPosition::new(placement.x, placement.y));
+    }
+    state.flush();
+}
 
 #[tauri::command]
 pub fn set_pet_placement(state: State<'_, AppState>, app: AppHandle, x: f64, y: f64) {
     let snap_edges = state.with(|m| m.settings.pet_flags.snap_edges);
     let screen = crate::windows::primary_screen_rect(&app);
-    let mut placement = PetPlacement { x, y };
+    let mut placement = Placement { x, y };
     if snap_edges {
         placement = snap(placement, crate::windows::PET_SIZE, screen);
     }

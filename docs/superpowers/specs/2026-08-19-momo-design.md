@@ -508,12 +508,26 @@ must stay green after every plan.
 | Font licensing and CJK subset size | IBM Plex and Silkscreen are OFL; ship the Latin subset only and let `PingFang SC` cover CJK |
 | Always-on-top pet costing battery | Redraw only on state change; pause animation when the pet is occluded or on battery saver |
 
-### 11.1 Open question — 迷你模式
+### 11.1 Resolved — 迷你模式
 
-Artboard 01 shows a `迷你模式` / `退出迷你模式` button and §6.5 lists a `toggle_mini_mode`
-command, but the design never shows the mini window itself. Plan 3 wires the button's label
-only. The mini state needs a design before it can be built; the desktop-pet window from
-plan 7 is the obvious host for it.
+Artboard 01 showed a `迷你模式` / `退出迷你模式` button and §6.5 listed a `toggle_mini_mode`
+command, but the design never showed the mini window itself, so plan 3 wired the button's
+label only.
+
+`Momo Mini Mode.dc.html` closed this. It draws three forms — 条形 260 × 52, 纸片 132 × 148,
+一行字 96 × 30 — and 条形 is the one built: a desktop-layer window of its own rather than a
+resized main window, reusing the pet's drag / snap / placement machinery. The main window
+and the desktop pet are both put away while it is up, ⌘⌥M toggles it globally, and a
+reminder swells the bar in place instead of opening a second window.
+
+Two places where the artboard and its own notes disagreed, and how they were settled:
+
+- The bar is drawn with two hover buttons; note 2 names three (暂停、跳过、回主窗口).
+  Three are built — the note is the behavioural spec, and 回主窗口 deserves a visible
+  affordance rather than only the double-click from note 3.
+- Note 4 says a firing reminder must not open a second window. That is applied to the
+  轻量气泡 and 桌面宠物 tiers; 全屏遮罩 still takes the screen, because folding the loudest
+  reminder into a 260px bar would quietly disable it.
 
 ## 12. Implementation plan sequence
 

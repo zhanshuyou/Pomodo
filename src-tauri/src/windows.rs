@@ -44,10 +44,20 @@ pub fn show_main(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Put the main window away without closing it — the timer keeps running.
+pub fn hide_main(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+}
+
 use serde::Serialize;
 use tauri::{Emitter, LogicalPosition, LogicalSize, WebviewUrl, WebviewWindowBuilder};
 
-use crate::core::desk::{clamp_to_screen, PetPlacement, ScreenRect};
+pub use crate::core::desk::MINI_SIZE;
+use crate::core::desk::{
+    clamp_mini_height, clamp_to_screen, pet_should_show, Placement, ScreenRect,
+};
 use crate::platform::platform;
 
 pub const PET_SIZE: (f64, f64) = (380.0, 200.0);
@@ -75,11 +85,107 @@ pub fn primary_screen_rect(app: &AppHandle) -> ScreenRect {
         })
 }
 
-/// True unless the user has dismissed the pet.
+/// True unless the user has dismissed the pet — or mini mode is on, in which
+/// case the bar's own cat stands in for it.
 fn pet_wanted(app: &AppHandle) -> bool {
     app.try_state::<crate::state::AppState>()
-        .map(|s| s.with(|m| m.settings.pet_visible))
+        .map(|s| s.with(|m| pet_should_show(m.settings.pet_visible, m.mini_enabled)))
         .unwrap_or(true)
+}
+
+fn mini_wanted(app: &AppHandle) -> bool {
+    app.try_state::<crate::state::AppState>()
+        .map(|s| s.with(|m| m.mini_enabled))
+        .unwrap_or(false)
+}
+
+/// Create the mini bar if needed, give it the same desktop-layer treatment the
+/// pet gets, and put it back where the user left it.
+pub fn ensure_mini(app: &AppHandle) -> tauri::Result<()> {
+    if !mini_wanted(app) {
+        hide_mini(app);
+        return Ok(());
+    }
+    let window = match app.get_webview_window("mini") {
+        Some(w) => w,
+        None => WebviewWindowBuilder::new(app, "mini", WebviewUrl::App("mini.html".into()))
+            .inner_size(MINI_SIZE.0, MINI_SIZE.1)
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .resizable(false)
+            .shadow(false)
+            .focused(false)
+            .visible(false)
+            .build()?,
+    };
+
+    platform().make_desktop_layer(&window);
+
+    // A bar left expanded by a reminder must come back at its resting height.
+    window.set_size(LogicalSize::new(MINI_SIZE.0, MINI_SIZE.1))?;
+
+    let screen = primary_screen_rect(app);
+    let stored = app
+        .try_state::<crate::state::AppState>()
+        .and_then(|s| s.with(|m| m.mini_placement));
+    // Default to the artboard's top-right corner, clear of the menu bar.
+    let placement = stored.unwrap_or(Placement {
+        x: screen.x + screen.width - MINI_SIZE.0 - 24.0,
+        y: screen.y + 40.0,
+    });
+    let placement = clamp_to_screen(placement, MINI_SIZE, screen);
+    window.set_position(LogicalPosition::new(placement.x, placement.y))?;
+    if !window.is_visible().unwrap_or(false) {
+        window.show()?;
+    }
+    Ok(())
+}
+
+/// Enter or leave 迷你模式. Entering puts the main window away and stands the
+/// bar's own cat in for the desktop pet; leaving restores both. Lives here
+/// rather than in `commands` because the tray and the global hotkey flip it too.
+pub fn set_mini(app: &AppHandle, value: bool) -> tauri::Result<()> {
+    if let Some(state) = app.try_state::<crate::state::AppState>() {
+        state.with(|m| m.mini_enabled = value);
+        state.emit_changed(app, crate::events::Section::Settings);
+        state.flush();
+    }
+    if value {
+        hide_main(app);
+        hide_pet(app);
+        ensure_mini(app)?;
+    } else {
+        hide_mini(app);
+        // ensure_pet consults pet_visible itself, so a dismissed pet stays gone.
+        let _ = ensure_pet(app);
+        show_main(app)?;
+    }
+    Ok(())
+}
+
+pub fn toggle_mini(app: &AppHandle) -> tauri::Result<()> {
+    let next = app
+        .try_state::<crate::state::AppState>()
+        .map(|s| s.with(|m| !m.mini_enabled))
+        .unwrap_or(true);
+    set_mini(app, next)
+}
+
+pub fn hide_mini(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("mini") {
+        let _ = window.hide();
+    }
+}
+
+/// Resize the bar to the height it just measured for itself. The top-left
+/// corner stays put, so a bar parked against the top edge grows downward.
+pub fn set_mini_height(app: &AppHandle, height: f64) {
+    let Some(window) = app.get_webview_window("mini") else {
+        return;
+    };
+    let _ = window.set_size(LogicalSize::new(MINI_SIZE.0, clamp_mini_height(height)));
 }
 
 /// Create the pet window if needed, give it the desktop layer treatment, and put
@@ -111,7 +217,7 @@ pub fn ensure_pet(app: &AppHandle) -> tauri::Result<()> {
         .try_state::<crate::state::AppState>()
         .and_then(|s| s.with(|m| m.pet_placement));
     // Default to the design's bottom-left corner placement.
-    let placement = stored.unwrap_or(PetPlacement {
+    let placement = stored.unwrap_or(Placement {
         x: screen.x + 118.0,
         y: screen.y + screen.height - PET_SIZE.1 - 92.0,
     });

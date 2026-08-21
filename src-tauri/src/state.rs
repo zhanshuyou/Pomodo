@@ -152,11 +152,21 @@ impl AppState {
                 .collect::<Vec<_>>()
         });
 
+        let mini = self.with(|m| m.mini_enabled);
+
         for payload in fires {
             // Every window hears the raw event; the surface that renders it depends
             // on the intensity the engine chose for this particular firing.
             let _ = app.emit(events::REMINDER_FIRE, payload.clone());
             match payload.intensity {
+                // In 迷你模式 the bar swells to carry the message itself. You have
+                // already handed the screen over to whatever you are working in —
+                // covering it with a second window would take it back.
+                Intensity::Bubble | Intensity::Pet if mini => {
+                    // The bar grows itself once it knows how tall the message
+                    // rendered — see set_mini_height.
+                    let _ = app.emit_to("mini", "mini:nudge", payload.clone());
+                }
                 Intensity::Bubble => {
                     let _ = crate::windows::show_bubble(app, payload.clone());
                 }
@@ -164,6 +174,8 @@ impl AppState {
                     let _ = crate::windows::ensure_pet(app);
                     let _ = app.emit_to("pet", "pet:nudge", payload.clone());
                 }
+                // 全屏遮罩 is the "you must deal with this" tier; shrinking it into a
+                // 260px bar would quietly disable the loudest reminder there is.
                 Intensity::Fullscreen => {
                     let _ = crate::windows::show_overlay(app, payload.clone());
                 }

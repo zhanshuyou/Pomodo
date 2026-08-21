@@ -118,6 +118,44 @@ mod tests {
     }
 
     #[test]
+    fn mini_mode_and_its_placement_survive_a_round_trip() {
+        let dir = temp_dir("mini");
+        let store = Store::new(&dir);
+        let mut model = store.load();
+        model.mini_enabled = true;
+        model.mini_placement = Some(crate::core::desk::Placement { x: 1180.0, y: 0.0 });
+        store.save(&model).expect("save");
+
+        let back = Store::new(&dir).load();
+        assert!(back.mini_enabled);
+        assert_eq!(
+            back.mini_placement,
+            Some(crate::core::desk::Placement { x: 1180.0, y: 0.0 })
+        );
+    }
+
+    #[test]
+    fn a_save_written_before_mini_mode_existed_still_loads() {
+        let dir = temp_dir("mini-missing");
+        let store = Store::new(&dir);
+        let model = store.load();
+        store.save(&model).expect("save");
+
+        // Strip the two keys the way a state.json from the previous build looks.
+        let raw = fs::read_to_string(dir.join("state.json")).expect("read");
+        let mut value: serde_json::Value = serde_json::from_str(&raw).expect("parse");
+        let obj = value["model"].as_object_mut().expect("model object");
+        obj.remove("miniEnabled");
+        obj.remove("miniPlacement");
+        fs::write(dir.join("state.json"), value.to_string()).expect("write");
+
+        let back = Store::new(&dir).load();
+        assert!(!back.mini_enabled);
+        assert_eq!(back.mini_placement, None);
+        assert_eq!(back.tasks.len(), 5); // and it is the real model, not a fresh fallback
+    }
+
+    #[test]
     fn save_writes_the_schema_version() {
         let dir = temp_dir("version");
         let store = Store::new(&dir);

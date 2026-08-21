@@ -57,6 +57,18 @@ describe("FocusTab", () => {
     expect(labels).toContain("迷你模式");
   });
 
+  it("labels the mini button from the real mode, not a local toggle", () => {
+    const button = [...host.querySelectorAll("button")].find((b) =>
+      b.textContent?.trim().endsWith("迷你模式"),
+    );
+    expect(button?.textContent?.trim()).toBe("迷你模式");
+
+    app.model.miniEnabled = true;
+    flushSync();
+    expect(button?.textContent?.trim()).toBe("退出迷你模式");
+    app.model.miniEnabled = false;
+  });
+
   it("renders the status pill with phase, round and total", () => {
     const status = host.querySelector(".status")?.textContent?.replace(/\s+/g, " ");
     expect(status).toContain("专注中");
