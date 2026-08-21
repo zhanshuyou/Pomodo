@@ -41,8 +41,10 @@
       {/each}
     </div>
     <div class="meta">
-      <span>连续 12 天</span>
-      <span class="sep"></span>
+      {#if app.summary}
+        <span>连续 {app.summary.streak} 天</span>
+        <span class="sep"></span>
+      {/if}
       <button class="prefslink" type="button" onclick={() => void openPrefs()}>⌘,</button>
     </div>
   </TitleBar>
