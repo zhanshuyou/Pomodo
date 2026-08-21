@@ -319,3 +319,61 @@ pub fn dismiss_overlays(app: &AppHandle) {
         }
     }
 }
+
+/// Every window label the app creates. A label missing from the capability file
+/// gets no permissions at all, and the only symptom is an invoke that quietly
+/// fails inside a window nobody can attach a debugger to — so it is checked here.
+#[cfg(test)]
+const CREATED_LABELS: &[&str] = &[
+    "main",
+    "prefs",
+    "tray",
+    "pet",
+    "bubble",
+    "mini",
+    "overlay-0",
+    "overlay-1",
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Tauri matches capability windows as globs; `*` stands for any run of
+    /// characters. Only the trailing form is used here.
+    fn label_matches(pattern: &str, label: &str) -> bool {
+        match pattern.strip_suffix('*') {
+            Some(prefix) => label.starts_with(prefix),
+            None => pattern == label,
+        }
+    }
+
+    fn capability_windows() -> Vec<String> {
+        let raw = include_str!("../capabilities/default.json");
+        let value: serde_json::Value = serde_json::from_str(raw).expect("capability json");
+        value["windows"]
+            .as_array()
+            .expect("windows array")
+            .iter()
+            .map(|v| v.as_str().expect("window label").to_string())
+            .collect()
+    }
+
+    #[test]
+    fn every_window_the_app_creates_is_covered_by_the_capability() {
+        let patterns = capability_windows();
+        for label in CREATED_LABELS {
+            assert!(
+                patterns.iter().any(|p| label_matches(p, label)),
+                "window {label:?} has no capability entry; it would launch with no permissions"
+            );
+        }
+    }
+
+    #[test]
+    fn a_bare_prefix_does_not_match_a_suffixed_label() {
+        assert!(!label_matches("overlay", "overlay-0"));
+        assert!(label_matches("overlay-*", "overlay-0"));
+        assert!(label_matches("mini", "mini"));
+    }
+}
