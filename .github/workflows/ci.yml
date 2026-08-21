@@ -20,18 +20,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Reads the version from package.json's packageManager field.
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Type-check (svelte-check + tsc)
-        run: npm run check
+        run: pnpm check
 
       - name: Build
-        run: npm run build
+        run: pnpm build
 
   rust:
     name: Rust
@@ -84,10 +87,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -106,7 +111,7 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Build app
-        run: npm run tauri build -- --no-bundle
+        run: pnpm tauri build --no-bundle
