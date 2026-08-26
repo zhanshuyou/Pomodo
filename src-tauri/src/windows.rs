@@ -52,6 +52,7 @@ pub fn hide_main(app: &AppHandle) {
 }
 
 use serde::Serialize;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tauri::{Emitter, LogicalPosition, LogicalSize, WebviewUrl, WebviewWindowBuilder};
 
 pub use crate::core::desk::MINI_SIZE;
@@ -284,11 +285,23 @@ pub fn hide_bubble(app: &AppHandle) {
     }
 }
 
+/// Tauri's `close()` is async, so a same-tick double-fire can call `show_overlay`
+/// again before the previous windows have actually gone away. Tagging every
+/// call with its own generation keeps the new labels from colliding with a
+/// predecessor still mid-close, instead of racing `WebviewWindowBuilder::build`
+/// against it under the same label.
+static OVERLAY_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+fn overlay_label(generation: u64, index: usize) -> String {
+    format!("overlay-{generation}-{index}")
+}
+
 /// 全屏遮罩 — one window per connected monitor, torn down on dismissal.
 pub fn show_overlay<P: Serialize + Clone>(app: &AppHandle, payload: P) -> tauri::Result<()> {
     dismiss_overlays(app);
+    let generation = OVERLAY_GENERATION.fetch_add(1, Ordering::SeqCst);
     for (index, monitor) in app.available_monitors()?.iter().enumerate() {
-        let label = format!("overlay-{index}");
+        let label = overlay_label(generation, index);
         let scale = monitor.scale_factor();
         let pos = monitor.position().to_logical::<f64>(scale);
         let size = monitor.size().to_logical::<f64>(scale);
@@ -375,5 +388,18 @@ mod tests {
         assert!(!label_matches("overlay", "overlay-0"));
         assert!(label_matches("overlay-*", "overlay-0"));
         assert!(label_matches("mini", "mini"));
+    }
+
+    #[test]
+    fn overlay_labels_never_repeat_across_generations() {
+        // Two fullscreen reminders firing in the same tick call show_overlay
+        // twice; each call must mint labels the other cannot still be using.
+        assert_ne!(overlay_label(0, 0), overlay_label(1, 0));
+        assert_ne!(overlay_label(0, 1), overlay_label(1, 1));
+    }
+
+    #[test]
+    fn a_generation_suffixed_overlay_label_still_matches_the_capability_glob() {
+        assert!(label_matches("overlay-*", &overlay_label(3, 1)));
     }
 }
