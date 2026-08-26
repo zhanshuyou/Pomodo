@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, Days, Local, NaiveDate, Utc, Weekday};
+use chrono::{DateTime, Datelike, Days, Local, NaiveDate, Timelike, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 
 use crate::model::{Model, TaskId};
@@ -15,9 +15,12 @@ pub struct Session {
 }
 
 impl Session {
+    fn local(&self) -> Option<DateTime<Local>> {
+        DateTime::<Utc>::from_timestamp(self.started_at, 0).map(|dt| dt.with_timezone(&Local))
+    }
+
     fn date(&self) -> Option<NaiveDate> {
-        DateTime::<Utc>::from_timestamp(self.started_at, 0)
-            .map(|dt| dt.with_timezone(&Local).date_naive())
+        self.local().map(|dt| dt.date_naive())
     }
 }
 
@@ -35,6 +38,17 @@ pub struct DayBar {
     pub count: u32,
 }
 
+/// The hour-of-day bucket with the worst interruption rate, for the
+/// 「被打断最多的时段」 insight card. `end_hour` is `start_hour + 1`, wrapped at midnight.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InterruptionHotspot {
+    pub start_hour: u8,
+    pub end_hour: u8,
+    pub interruptions: u32,
+    pub total: u32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StatsSummary {
@@ -47,6 +61,9 @@ pub struct StatsSummary {
     pub streak: u32,
     pub best_streak: u32,
     pub bars: Vec<DayBar>,
+    /// `None` when no hour bucket has enough sessions yet to say anything meaningful,
+    /// rather than showing a made-up conclusion.
+    pub interruption_hotspot: Option<InterruptionHotspot>,
 }
 
 fn weekday_label(date: NaiveDate) -> &'static str {
@@ -138,6 +155,50 @@ impl Stats {
         (completed, secs, interruptions)
     }
 
+    /// The hour-of-day bucket with the worst interruption rate over the 14 days
+    /// ending `today` (matching the two-week chart above the card). Only considers
+    /// buckets with at least `MIN_SESSIONS` sessions, so a single bad round early on
+    /// doesn't read as a pattern.
+    fn interruption_hotspot(&self, today: NaiveDate) -> Option<InterruptionHotspot> {
+        const MIN_SESSIONS: u32 = 3;
+        let start = today.checked_sub_days(Days::new(13)).unwrap_or(today);
+
+        // (interruptions, total) per hour of day.
+        let mut buckets = [(0u32, 0u32); 24];
+        for session in &self.sessions {
+            let Some(local) = session.local() else {
+                continue;
+            };
+            let date = local.date_naive();
+            if date < start || date > today {
+                continue;
+            }
+            let bucket = &mut buckets[local.hour() as usize];
+            bucket.1 += 1;
+            if !session.completed {
+                bucket.0 += 1;
+            }
+        }
+
+        buckets
+            .iter()
+            .enumerate()
+            .filter(|&(_, &(_, total))| total >= MIN_SESSIONS)
+            .max_by(|&(_, &(a_int, a_total)), &(_, &(b_int, b_total))| {
+                let a_rate = f64::from(a_int) / f64::from(a_total);
+                let b_rate = f64::from(b_int) / f64::from(b_total);
+                a_rate
+                    .total_cmp(&b_rate)
+                    .then_with(|| a_total.cmp(&b_total))
+            })
+            .map(|(hour, &(interruptions, total))| InterruptionHotspot {
+                start_hour: hour as u8,
+                end_hour: ((hour + 1) % 24) as u8,
+                interruptions,
+                total,
+            })
+    }
+
     pub fn summary(&self, today: NaiveDate) -> StatsSummary {
         let (pomodoros, week_focus_secs, interruptions) = self.window(today, 0);
         let (_, prev_secs, prev_interruptions) = self.window(today, 7);
@@ -175,6 +236,7 @@ impl Stats {
             streak,
             best_streak: self.best_streak.max(streak),
             bars,
+            interruption_hotspot: self.interruption_hotspot(today),
         }
     }
 }
@@ -217,6 +279,22 @@ mod tests {
             secs: 1500,
             task: None,
             completed: true,
+        }
+    }
+
+    /// A session at the given local hour on the given day, built in local time
+    /// (rather than UTC noon like `session_on`) so hour-bucketing tests don't
+    /// depend on the machine's timezone offset.
+    fn session_at(date: NaiveDate, hour: u32, completed: bool) -> Session {
+        Session {
+            started_at: Local
+                .from_local_datetime(&date.and_hms_opt(hour, 0, 0).unwrap())
+                .single()
+                .expect("unambiguous local time")
+                .timestamp(),
+            secs: 1500,
+            task: None,
+            completed,
         }
     }
 
@@ -318,6 +396,49 @@ mod tests {
         let s = stats.summary(day(2026, 8, 19));
         assert_eq!(s.interruptions, 2);
         assert_eq!(s.pomodoros, 1);
+    }
+
+    #[test]
+    fn interruption_hotspot_picks_the_bucket_with_the_worst_rate() {
+        let mut stats = Stats::default();
+        let today = day(2026, 8, 19);
+        // 15:00 bucket: 3 sessions, 2 interrupted — a 67% rate.
+        stats.record(session_at(today, 15, false));
+        stats.record(session_at(today, 15, false));
+        stats.record(session_at(today, 15, true));
+        // 10:00 bucket: 3 sessions, 1 interrupted — a lower rate.
+        stats.record(session_at(today, 10, false));
+        stats.record(session_at(today, 10, true));
+        stats.record(session_at(today, 10, true));
+
+        let hotspot = stats
+            .summary(today)
+            .interruption_hotspot
+            .expect("a hotspot with enough data");
+        assert_eq!(hotspot.start_hour, 15);
+        assert_eq!(hotspot.end_hour, 16);
+        assert_eq!(hotspot.interruptions, 2);
+        assert_eq!(hotspot.total, 3);
+    }
+
+    #[test]
+    fn interruption_hotspot_is_none_without_enough_sessions_in_any_bucket() {
+        let mut stats = Stats::default();
+        let today = day(2026, 8, 19);
+        stats.record(session_at(today, 15, false));
+        stats.record(session_at(today, 15, false));
+        assert!(stats.summary(today).interruption_hotspot.is_none());
+    }
+
+    #[test]
+    fn interruption_hotspot_ignores_sessions_outside_the_two_week_window() {
+        let mut stats = Stats::default();
+        let today = day(2026, 8, 19);
+        let too_old = today.checked_sub_days(Days::new(14)).unwrap();
+        for _ in 0..5 {
+            stats.record(session_at(too_old, 15, false));
+        }
+        assert!(stats.summary(today).interruption_hotspot.is_none());
     }
 
     #[test]

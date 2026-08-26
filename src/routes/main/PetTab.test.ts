@@ -120,6 +120,7 @@ describe("StatsTab", () => {
         label: "一二三四五六日"[i % 7],
         count,
       })),
+      interruptionHotspot: { startHour: 15, endHour: 16, interruptions: 5, total: 9 },
     };
     ({ host, component } = render(StatsTab));
   });
@@ -168,11 +169,22 @@ describe("StatsTab", () => {
     expect(cells[2].style.background).toContain("0.09");
   });
 
-  it("renders both insight cards", () => {
+  it("renders both insight cards, with the hotspot text computed from real data", () => {
     const titles = [...host.querySelectorAll(".ititle")].map((e) => e.textContent);
     expect(titles).toEqual(["被打断最多的时段", "Pomodo 的评价"]);
     expect(host.querySelector(".ccaption")?.textContent).toBe(
       "每格 = 一个番茄，颜色越深越连贯",
     );
+    const bodies = [...host.querySelectorAll(".ibody")].map((e) => e.textContent);
+    expect(bodies[0]).toBe(
+      "15:00–16:00，9 轮里有 5 轮被打断。要不要把这段设成「勿扰 + 只留宠物提示」？",
+    );
+  });
+
+  it("hides the hotspot card instead of a fabricated conclusion when there is not enough data", () => {
+    app.summary = { ...app.summary!, interruptionHotspot: null };
+    flushSync();
+    const titles = [...host.querySelectorAll(".ititle")].map((e) => e.textContent);
+    expect(titles).toEqual(["Pomodo 的评价"]);
   });
 });
