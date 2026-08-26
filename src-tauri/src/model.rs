@@ -91,6 +91,12 @@ impl Default for Settings {
     }
 }
 
+/// 1 minute to 4 hours — generous enough for any real focus/break length, tight
+/// enough to keep a mistyped value from wedging the timer.
+const MIN_PHASE_SECS: u32 = 60;
+const MAX_PHASE_SECS: u32 = 4 * 3600;
+const MAX_ROUNDS_PER_CYCLE: u8 = 12;
+
 impl Settings {
     pub fn duration_for(&self, phase: Phase) -> u32 {
         match phase {
@@ -98,6 +104,19 @@ impl Settings {
             Phase::ShortBreak => self.short_break_secs,
             Phase::LongBreak => self.long_break_secs,
         }
+    }
+
+    pub fn set_timer_durations(
+        &mut self,
+        focus_secs: u32,
+        short_break_secs: u32,
+        long_break_secs: u32,
+        rounds_per_cycle: u8,
+    ) {
+        self.focus_secs = focus_secs.clamp(MIN_PHASE_SECS, MAX_PHASE_SECS);
+        self.short_break_secs = short_break_secs.clamp(MIN_PHASE_SECS, MAX_PHASE_SECS);
+        self.long_break_secs = long_break_secs.clamp(MIN_PHASE_SECS, MAX_PHASE_SECS);
+        self.rounds_per_cycle = rounds_per_cycle.clamp(1, MAX_ROUNDS_PER_CYCLE);
     }
 }
 
@@ -245,6 +264,29 @@ mod tests {
         assert_eq!(s.duration_for(Phase::Focus), 1500);
         assert_eq!(s.duration_for(Phase::ShortBreak), 300);
         assert_eq!(s.duration_for(Phase::LongBreak), 900);
+    }
+
+    #[test]
+    fn set_timer_durations_applies_valid_values() {
+        let mut s = Settings::default();
+        s.set_timer_durations(600, 120, 1200, 6);
+        assert_eq!(s.focus_secs, 600);
+        assert_eq!(s.short_break_secs, 120);
+        assert_eq!(s.long_break_secs, 1200);
+        assert_eq!(s.rounds_per_cycle, 6);
+    }
+
+    #[test]
+    fn set_timer_durations_clamps_out_of_range_values() {
+        let mut s = Settings::default();
+        s.set_timer_durations(0, u32::MAX, 30, 0);
+        assert_eq!(s.focus_secs, 60); // clamped up to the 1-minute floor
+        assert_eq!(s.short_break_secs, 4 * 3600); // clamped down to the 4-hour ceiling
+        assert_eq!(s.long_break_secs, 60);
+        assert_eq!(s.rounds_per_cycle, 1); // clamped up from 0
+
+        s.set_timer_durations(600, 120, 1200, 255);
+        assert_eq!(s.rounds_per_cycle, 12); // clamped down from 255
     }
 
     #[test]

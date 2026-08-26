@@ -107,6 +107,33 @@ pub fn set_pet_flag(state: State<'_, AppState>, app: AppHandle, flag: String, va
     state.flush();
 }
 
+/// Changing a duration only takes effect on the *next* phase transition — the
+/// round already in flight keeps counting down against the duration it started
+/// with, the same way `Timer::advance` always has. `belly_cells` is the one
+/// exception: it reads `settings.duration_for` fresh every tick, so it will
+/// jump immediately to reflect the new denominator.
+#[tauri::command]
+pub fn set_timer_durations(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    focus_secs: u32,
+    short_break_secs: u32,
+    long_break_secs: u32,
+    rounds_per_cycle: u8,
+) {
+    state.with(|m| {
+        m.settings.set_timer_durations(
+            focus_secs,
+            short_break_secs,
+            long_break_secs,
+            rounds_per_cycle,
+        )
+    });
+    state.emit_tick(&app);
+    state.emit_changed(&app, Section::Settings);
+    state.flush();
+}
+
 use std::path::Path;
 
 use tauri::Manager;
@@ -428,7 +455,10 @@ pub fn today_summary(state: State<'_, AppState>) -> TodaySummary {
     state.with(|m| {
         let counts = m.stats.daily_counts(today, 1);
         let pomodoros = counts.first().copied().unwrap_or(0);
-        let focus_secs = pomodoros * m.settings.focus_secs;
+        // Sums each session's own recorded length rather than multiplying by the
+        // *current* focus_secs, which goes wrong the moment the duration is ever
+        // changed — today's earlier sessions may have run under a different one.
+        let focus_secs = m.stats.day_focus_secs(today);
         TodaySummary {
             pomodoros,
             focus_secs,
