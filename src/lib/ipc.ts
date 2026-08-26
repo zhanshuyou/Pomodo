@@ -70,7 +70,7 @@ export interface PhaseChange {
 }
 
 export interface ChangedPayload {
-  section: "tasks" | "settings" | "timer";
+  section: "tasks" | "settings" | "timer" | "reminders" | "body";
 }
 
 /** False when the page is opened in a plain browser, e.g. gallery.html. */
