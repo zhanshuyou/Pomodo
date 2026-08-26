@@ -27,7 +27,9 @@ A cross-platform desktop app built with [Tauri 2](https://tauri.app), Svelte, Ty
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org) 18+
+- [Node.js](https://nodejs.org) 18+ (CI builds on 22)
+- [pnpm](https://pnpm.io) — the version in `package.json`'s `packageManager` field,
+  which `corepack enable` installs for you
 - [Rust](https://rustup.rs) stable
 - Platform dependencies listed at <https://tauri.app/start/prerequisites/>
 
@@ -42,18 +44,18 @@ sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev \
 ## Getting started
 
 ```sh
-npm install
-npm run tauri dev     # run the desktop app with hot reload
+pnpm install
+pnpm tauri dev     # run the desktop app with hot reload
 ```
 
 ## Building
 
 ```sh
-npm run tauri build   # produce platform installers in src-tauri/target/release/bundle
+pnpm tauri build   # produce platform installers in src-tauri/target/release/bundle
 ```
 
-Frontend-only commands are also available: `npm run dev`, `npm run build`, `npm run preview`,
-and `npm run check` for Svelte/TypeScript diagnostics.
+Frontend-only commands are also available: `pnpm dev`, `pnpm build`, `pnpm preview`,
+`pnpm check` for Svelte/TypeScript diagnostics, and `pnpm test` for the vitest suite.
 
 ## Recommended IDE setup
 
@@ -64,9 +66,9 @@ and `npm run check` for Svelte/TypeScript diagnostics.
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push to
 `main` and on every pull request:
 
-- **Frontend** — `npm run check` (svelte-check + tsc) and `npm run build`
+- **Frontend** — `pnpm check` (svelte-check + tsc), `pnpm test` and `pnpm build`
 - **Rust** — `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`
-- **Tauri build** — `npm run tauri build -- --no-bundle` on Linux, macOS and
+- **Tauri build** — `pnpm tauri build --no-bundle` on Linux, macOS and
   Windows, which compiles the release binary against the built frontend
   without producing installers
 
