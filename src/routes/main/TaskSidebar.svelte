@@ -1,6 +1,17 @@
+<script module lang="ts">
+  import { addTask } from "../../lib/ipc";
+
+  // Shared by the sidebar's own button and the ⌘N keyboard shortcut in App.svelte.
+  export async function onAdd() {
+    const name = window.prompt("要啃什么？");
+    if (!name?.trim()) return;
+    await addTask(name.trim(), 1);
+  }
+</script>
+
 <script lang="ts">
   import StatBar from "../../lib/components/StatBar.svelte";
-  import { addTask, setActiveTask, toggleTask } from "../../lib/ipc";
+  import { setActiveTask, toggleTask } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
 
   // Driven by the reminder engine: acknowledging 喝水 / 站立 moves these.
@@ -32,12 +43,6 @@
     if (task.done) return `已完成 · ${task.spent} 个番茄`;
     if (task.spent > 0) return `进行中 · 已投入 ${task.spent} 个番茄`;
     return `预计 ${task.estimate} 个番茄`;
-  }
-
-  async function onAdd() {
-    const name = window.prompt("要啃什么？");
-    if (!name?.trim()) return;
-    await addTask(name.trim(), 1);
   }
 </script>
 

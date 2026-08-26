@@ -6,6 +6,15 @@
   import FocusTab from "./FocusTab.svelte";
   import PetTab from "./PetTab.svelte";
   import StatsTab from "./StatsTab.svelte";
+  import { onAdd } from "./TaskSidebar.svelte";
+
+  const TEXT_INPUT_TAGS = new Set(["INPUT", "TEXTAREA"]);
+
+  function isTextInputFocused(): boolean {
+    const el = document.activeElement;
+    if (!el) return false;
+    return TEXT_INPUT_TAGS.has(el.tagName) || (el as HTMLElement).isContentEditable;
+  }
 
   const TABS = ["专注", "统计", "宠物"] as const;
   let tab = $state(0);
@@ -23,6 +32,12 @@
       if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === "KeyM") {
         e.preventDefault();
         void toggleMiniMode();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.code === "KeyN") {
+        if (isTextInputFocused()) return;
+        e.preventDefault();
+        void onAdd();
       }
     };
     window.addEventListener("keydown", onKey);
