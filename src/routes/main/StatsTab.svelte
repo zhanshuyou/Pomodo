@@ -19,6 +19,14 @@
     return `${n}${suffix}`;
   }
 
+  const hour = (h: number) => `${String(h).padStart(2, "0")}:00`;
+
+  const hotspotText = $derived.by(() => {
+    const h = s?.interruptionHotspot;
+    if (!h) return null;
+    return `${hour(h.startHour)}–${hour(h.endHour)}，${h.total} 轮里有 ${h.interruptions} 轮被打断。要不要把这段设成「勿扰 + 只留宠物提示」？`;
+  });
+
   const cards = $derived(
     s
       ? [
@@ -86,12 +94,12 @@
   </div>
 
   <div class="insights">
-    <div class="insight">
-      <span class="ititle">被打断最多的时段</span>
-      <span class="ibody">
-        15:00–16:00，平均每轮被打断 1.8 次。要不要把这段设成「勿扰 + 只留宠物提示」？
-      </span>
-    </div>
+    {#if hotspotText}
+      <div class="insight">
+        <span class="ititle">被打断最多的时段</span>
+        <span class="ibody">{hotspotText}</span>
+      </div>
+    {/if}
     <div class="insight">
       <span class="ititle">Pomodo 的评价</span>
       <span class="ibody">{petVerdict(app.tone)}</span>

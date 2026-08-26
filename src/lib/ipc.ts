@@ -115,6 +115,13 @@ export interface DayBar {
   count: number;
 }
 
+export interface InterruptionHotspot {
+  startHour: number;
+  endHour: number;
+  interruptions: number;
+  total: number;
+}
+
 export interface StatsSummary {
   weekFocusSecs: number;
   weekDeltaPct: number;
@@ -125,6 +132,7 @@ export interface StatsSummary {
   streak: number;
   bestStreak: number;
   bars: DayBar[];
+  interruptionHotspot: InterruptionHotspot | null;
 }
 
 export interface CustomPet {
