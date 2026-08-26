@@ -65,6 +65,12 @@ pub struct FireContext {
     pub minute_of_day: u16,
     /// 0 = Monday.
     pub weekday_index: usize,
+    /// Days since a fixed epoch (`NaiveDate::num_days_from_ce`). Used, together with
+    /// `last_daily_fire`, to tell "already fired today" apart from "the clock is past
+    /// the target minute" — the two are conflated if you only track the minute, which
+    /// is what let a `DailyAt` reminder go silent forever once the machine slept
+    /// through its exact target minute.
+    pub day_ordinal: i32,
     pub in_focus: bool,
     pub in_meeting: bool,
     pub deep_work: bool,
@@ -97,8 +103,10 @@ pub struct Reminder {
     pub remaining_secs: u32,
     pub consecutive_ignores: u8,
     pub deferred: bool,
-    /// Last minute-of-day a `DailyAt` reminder fired, so it fires once per day.
-    pub last_daily_fire: Option<u16>,
+    /// Day-ordinal (`FireContext::day_ordinal`) a `DailyAt` reminder last fired on,
+    /// so it fires once per day — including on the tick that first notices the
+    /// machine woke up past the target minute.
+    pub last_daily_fire: Option<i32>,
 }
 
 fn seed_schedule(b: Builtin) -> Schedule {
@@ -232,15 +240,12 @@ impl Reminder {
             }
             Schedule::DailyAt { hour, minute } => {
                 let target = hour as u16 * 60 + minute as u16;
-                // Clear the once-per-day latch as soon as the clock moves off the target.
-                if ctx.minute_of_day != target {
-                    self.last_daily_fire = None;
+                // Fires on the first tick at or after the target minute each day, so a
+                // machine that slept through the exact minute still gets it on wake.
+                if ctx.minute_of_day < target || self.last_daily_fire == Some(ctx.day_ordinal) {
                     return TickOutcome::Idle;
                 }
-                if self.last_daily_fire == Some(target) {
-                    return TickOutcome::Idle;
-                }
-                self.last_daily_fire = Some(target);
+                self.last_daily_fire = Some(ctx.day_ordinal);
             }
         }
 
@@ -320,6 +325,7 @@ mod tests {
         FireContext {
             minute_of_day: 14 * 60,
             weekday_index: 2,
+            day_ordinal: 100,
             in_focus: false,
             in_meeting: false,
             deep_work: false,
@@ -520,10 +526,26 @@ mod tests {
         assert_eq!(r.tick(60, &c), TickOutcome::Fire(Intensity::Fullscreen));
         assert_eq!(r.tick(60, &c), TickOutcome::Idle);
         // Next day.
+        c.day_ordinal += 1;
         c.minute_of_day = 9 * 60 + 40;
         r.tick(60, &c);
         c.minute_of_day = 17 * 60 + 30;
         assert_eq!(r.tick(60, &c), TickOutcome::Fire(Intensity::Fullscreen));
+    }
+
+    #[test]
+    fn a_daily_reminder_still_fires_after_sleeping_through_its_minute() {
+        // The machine sleeps from 17:00 to 18:00, skipping 17:30 entirely; the next
+        // tick after wake should still deliver today's firing rather than going silent.
+        let mut r = Reminder::seed(Builtin::Review, 3, Tone::Playful);
+        let mut c = ctx();
+        c.minute_of_day = 17 * 60;
+        assert_eq!(r.tick(60, &c), TickOutcome::Idle);
+        c.minute_of_day = 18 * 60;
+        assert_eq!(r.tick(3600, &c), TickOutcome::Fire(Intensity::Fullscreen));
+        // Still only once, even though the clock stays past the target the rest of the day.
+        c.minute_of_day = 18 * 60 + 15;
+        assert_eq!(r.tick(900, &c), TickOutcome::Idle);
     }
 
     #[test]

@@ -208,6 +208,7 @@ impl Model {
         FireContext {
             minute_of_day: (now.hour() * 60 + now.minute()) as u16,
             weekday_index: now.weekday().num_days_from_monday() as usize,
+            day_ordinal: now.date_naive().num_days_from_ce(),
             in_focus: self.timer.running && self.timer.phase == Phase::Focus,
             in_meeting,
             deep_work: self.deep_work,
