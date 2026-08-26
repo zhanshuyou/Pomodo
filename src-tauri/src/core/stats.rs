@@ -99,6 +99,18 @@ impl Stats {
             .collect()
     }
 
+    /// Sum of each completed session's own recorded length on `date`. Unlike
+    /// `daily_counts(date, 1).0 * settings.focus_secs`, this stays correct even
+    /// after `focus_secs` has been changed, since every session carries the
+    /// duration it actually ran under.
+    pub fn day_focus_secs(&self, date: NaiveDate) -> u32 {
+        self.sessions
+            .iter()
+            .filter(|s| s.completed && s.date() == Some(date))
+            .map(|s| s.secs)
+            .sum()
+    }
+
     /// Consecutive days with at least one completed pomodoro, ending at today or
     /// yesterday. A day still in progress does not break the streak.
     pub fn streak(&self, today: NaiveDate) -> u32 {
@@ -315,6 +327,30 @@ mod tests {
         let counts = stats.daily_counts(day(2026, 8, 19), 4);
         // 8/16, 8/17, 8/18, 8/19
         assert_eq!(counts, vec![0, 1, 0, 2]);
+    }
+
+    #[test]
+    fn day_focus_secs_sums_each_sessions_own_length() {
+        let mut stats = Stats::default();
+        // Simulates focus_secs having been 1500s for one session, then changed to
+        // 1200s for the next — the total should reflect what actually ran, not
+        // `count * current_focus_secs`.
+        stats.record(session_on(day(2026, 8, 19)));
+        let mut shorter = session_on(day(2026, 8, 19));
+        shorter.secs = 1200;
+        stats.record(shorter);
+        stats.record(session_on(day(2026, 8, 18)));
+
+        assert_eq!(stats.day_focus_secs(day(2026, 8, 19)), 1500 + 1200);
+    }
+
+    #[test]
+    fn day_focus_secs_ignores_incomplete_sessions() {
+        let mut stats = Stats::default();
+        let mut skipped = session_on(day(2026, 8, 19));
+        skipped.completed = false;
+        stats.record(skipped);
+        assert_eq!(stats.day_focus_secs(day(2026, 8, 19)), 0);
     }
 
     #[test]

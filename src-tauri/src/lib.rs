@@ -126,6 +126,7 @@ pub fn run() {
             commands::set_accent,
             commands::set_tone,
             commands::set_pet_flag,
+            commands::set_timer_durations,
             commands::stats_summary,
             commands::select_pet,
             commands::set_use_custom_pet,

@@ -91,6 +91,12 @@ export const setAccent = (accent: Accent) => invoke<void>("set_accent", { accent
 export const setTone = (tone: Tone) => invoke<void>("set_tone", { tone });
 export const setPetFlag = (flag: keyof PetFlags, value: boolean) =>
   invoke<void>("set_pet_flag", { flag, value });
+export const setTimerDurations = (durations: {
+  focusSecs: number;
+  shortBreakSecs: number;
+  longBreakSecs: number;
+  roundsPerCycle: number;
+}) => invoke<void>("set_timer_durations", durations);
 
 /**
  * Every window subscribes in onMount, including the ones rendered outside Tauri
