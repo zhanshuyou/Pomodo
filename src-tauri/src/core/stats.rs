@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, Days, NaiveDate, Utc, Weekday};
+use chrono::{DateTime, Datelike, Days, Local, NaiveDate, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 
 use crate::model::{Model, TaskId};
@@ -16,7 +16,8 @@ pub struct Session {
 
 impl Session {
     fn date(&self) -> Option<NaiveDate> {
-        DateTime::<Utc>::from_timestamp(self.started_at, 0).map(|dt| dt.date_naive())
+        DateTime::<Utc>::from_timestamp(self.started_at, 0)
+            .map(|dt| dt.with_timezone(&Local).date_naive())
     }
 }
 
@@ -193,7 +194,7 @@ impl Model {
                 self.credit_task(id);
             }
         }
-        let today = Utc::now().date_naive();
+        let today = Local::now().date_naive();
         self.stats.best_streak = self.stats.best_streak.max(self.stats.streak(today));
     }
 }

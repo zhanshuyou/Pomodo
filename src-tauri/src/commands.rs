@@ -115,7 +115,7 @@ use crate::core::stats::StatsSummary;
 
 #[tauri::command]
 pub fn stats_summary(state: State<'_, AppState>) -> StatsSummary {
-    let today = chrono::Utc::now().date_naive();
+    let today = chrono::Local::now().date_naive();
     state.with(|m| m.stats.summary(today))
 }
 
@@ -424,7 +424,7 @@ pub fn up_next(state: State<'_, AppState>) -> Vec<UpNextItem> {
 
 #[tauri::command]
 pub fn today_summary(state: State<'_, AppState>) -> TodaySummary {
-    let today = chrono::Utc::now().date_naive();
+    let today = chrono::Local::now().date_naive();
     state.with(|m| {
         let counts = m.stats.daily_counts(today, 1);
         let pomodoros = counts.first().copied().unwrap_or(0);
