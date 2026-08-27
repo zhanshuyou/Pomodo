@@ -192,6 +192,7 @@ impl AppState {
                             intensity,
                             color: r.color.clone(),
                             must_complete: r.rules.must_complete,
+                            duration_secs: r.duration_secs,
                         })
                 })
                 .collect::<Vec<_>>()

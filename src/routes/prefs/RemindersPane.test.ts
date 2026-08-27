@@ -49,6 +49,7 @@ function seed(
     consecutiveIgnores: 0,
     deferred: false,
     lastDailyFire: null,
+    durationSecs: 60,
     ...overrides,
   };
 }

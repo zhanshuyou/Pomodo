@@ -13,11 +13,13 @@
   import { PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
 
-  /** The design's overlay shows 02:41 — a short forced break. */
-  const BREAK_SECS = 161;
+  /** Shown before any firing arrives — the design's 02:41. */
+  const IDLE_SECS = 161;
 
   let fire = $state<FirePayload | null>(null);
-  let left = $state(BREAK_SECS);
+  let left = $state(IDLE_SECS);
+  /** The countdown has finished and Rust has been told; do not tell it again. */
+  let finished = false;
 
   const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
 
@@ -26,14 +28,17 @@
 
     const un = onOverlayShow((payload) => {
       fire = payload;
-      left = BREAK_SECS;
+      left = payload.durationSecs ?? IDLE_SECS;
+      finished = false;
     });
 
     const ticker = setInterval(() => {
       if (left > 0) {
         left -= 1;
-      } else if (fire) {
+      } else if (fire && !finished && !fire.mustComplete) {
         // Sitting through the whole countdown counts as doing the thing.
+        // 必须完成 waits for the button instead.
+        finished = true;
         void dismissOverlay(fire.id, true);
       }
     }, 1000);

@@ -122,6 +122,13 @@ pub struct Reminder {
     /// `DailyAt` too. Runtime-only: a relaunch forgets a pending snooze.
     #[serde(skip)]
     pub snooze_secs: Option<u32>,
+    /// 持续多久 — the fullscreen overlay's countdown.
+    #[serde(default = "default_duration_secs")]
+    pub duration_secs: u32,
+}
+
+fn default_duration_secs() -> u32 {
+    DEFAULT_DURATION_SECS
 }
 
 /// How long 稍后 puts a reminder off.
@@ -136,6 +143,21 @@ fn seed_schedule(b: Builtin) -> Schedule {
             hour: 17,
             minute: 30,
         },
+    }
+}
+
+/// Before the user has said otherwise, a firing lasts this long.
+pub const DEFAULT_DURATION_SECS: u32 = 60;
+
+/// How long the overlay counts down for a builtin. The design's
+/// overlay shows 02:41, which is nobody's actual break; these are the numbers
+/// the copy itself implies (2 分钟 / 20 秒 / 5 分钟).
+fn seed_duration(b: Builtin) -> u32 {
+    match b {
+        Builtin::Stand => 120,
+        Builtin::Water => DEFAULT_DURATION_SECS,
+        Builtin::Eyes => 20,
+        Builtin::Review => 300,
     }
 }
 
@@ -202,6 +224,7 @@ impl Reminder {
             deferred: false,
             last_daily_fire: None,
             snooze_secs: None,
+            duration_secs: seed_duration(builtin),
         };
         r.refresh_detail();
         r
@@ -229,6 +252,7 @@ impl Reminder {
             deferred: false,
             last_daily_fire: None,
             snooze_secs: None,
+            duration_secs: DEFAULT_DURATION_SECS,
         };
         r.refresh_detail();
         r
@@ -578,6 +602,30 @@ mod tests {
         let mut c = ctx();
         c.deep_work = true;
         assert_eq!(r.tick(60, &c), TickOutcome::Fire(Intensity::Bubble));
+    }
+
+    #[test]
+    fn builtins_carry_the_durations_their_copy_implies() {
+        assert_eq!(
+            Reminder::seed(Builtin::Stand, 0, Tone::Playful).duration_secs,
+            120
+        );
+        assert_eq!(
+            Reminder::seed(Builtin::Eyes, 0, Tone::Playful).duration_secs,
+            20
+        );
+        assert_eq!(
+            Reminder::seed(Builtin::Review, 0, Tone::Playful).duration_secs,
+            300
+        );
+    }
+
+    #[test]
+    fn a_reminder_saved_without_a_duration_gets_the_default() {
+        let mut json = serde_json::to_value(water()).unwrap();
+        json.as_object_mut().unwrap().remove("durationSecs");
+        let r: Reminder = serde_json::from_value(json).unwrap();
+        assert_eq!(r.duration_secs, DEFAULT_DURATION_SECS);
     }
 
     #[test]

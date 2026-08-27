@@ -344,6 +344,28 @@
           </button>
         {/each}
       </div>
+      {#if editing.intensity !== "bubble"}
+        <label class="duration">
+          <span class="flabel">持续多久</span>
+          <input
+            class="minutes"
+            type="number"
+            min="5"
+            max="3600"
+            step="5"
+            aria-label="持续多久（秒）"
+            value={editing.durationSecs}
+            onchange={(e) => {
+              const secs = Math.round(Number(e.currentTarget.value));
+              if (Number.isFinite(secs))
+                void updateReminder(editing.id, {
+                  durationSecs: Math.max(5, Math.min(3600, secs)),
+                });
+            }}
+          />
+          <span class="mono">秒</span>
+        </label>
+      {/if}
       {#if editing.intensity === "fullscreen"}
         <label class="must">
           <Toggle
@@ -726,6 +748,14 @@
     background: var(--card);
     font-family: var(--font-mono);
     font-size: 12px;
+  }
+  .duration {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--dim);
   }
   .must {
     margin-top: 10px;

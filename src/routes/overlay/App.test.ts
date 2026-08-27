@@ -51,6 +51,35 @@ describe("fullscreen overlay", () => {
     expect(host.querySelector(".escape")?.textContent).toBe("按 ⎋ 逃跑（它会记着）");
   });
 
+  it("counts down the firing's own duration and reports completion once", () => {
+    vi.useFakeTimers();
+    void unmount(component);
+    host.remove();
+    let deliver: ((p: unknown) => void) | undefined;
+    overlayIpc.onOverlayShow.mockImplementationOnce((cb) => {
+      deliver = cb;
+      return Promise.resolve(() => {});
+    });
+    overlayIpc.dismissOverlay.mockClear();
+    ({ host, component } = render(Overlay));
+    deliver?.({
+      id: 2,
+      name: "远眺护眼",
+      message: "看看远方",
+      intensity: "fullscreen",
+      color: "oklch(0.7 0.1 145)",
+      mustComplete: false,
+      durationSecs: 20,
+    });
+    flushSync();
+    expect(host.querySelector(".count")?.textContent).toBe("00:20");
+    vi.advanceTimersByTime(25_000);
+    flushSync();
+    expect(overlayIpc.dismissOverlay).toHaveBeenCalledTimes(1);
+    expect(overlayIpc.dismissOverlay).toHaveBeenCalledWith(2, true);
+    vi.useRealTimers();
+  });
+
   it("hides every exit for a 必须完成 firing until the countdown ends", () => {
     vi.useFakeTimers();
     void unmount(component);
@@ -69,6 +98,7 @@ describe("fullscreen overlay", () => {
       intensity: "fullscreen",
       color: "oklch(0.68 0.1 300)",
       mustComplete: true,
+      durationSecs: 161,
     });
     flushSync();
     expect(host.querySelector(".later")).toBeNull();

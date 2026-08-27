@@ -235,6 +235,7 @@ export interface Reminder {
   consecutiveIgnores: number;
   deferred: boolean;
   lastDailyFire: number | null;
+  durationSecs: number;
 }
 
 export interface BodyCounters {
@@ -255,6 +256,8 @@ export interface FirePayload {
   color: string;
   /** 必须完成: the fullscreen overlay offers no ⎋ and no 稍后. */
   mustComplete?: boolean;
+  /** The overlay's countdown; absent only in tests that predate it. */
+  durationSecs?: number;
 }
 
 export interface ReminderPatch {
@@ -264,6 +267,7 @@ export interface ReminderPatch {
   intervalMinutes?: number;
   schedule?: Schedule;
   intensity?: Intensity;
+  durationSecs?: number;
   enabled?: boolean;
   rules?: Rules;
 }

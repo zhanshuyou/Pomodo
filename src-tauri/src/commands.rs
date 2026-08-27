@@ -275,6 +275,7 @@ pub struct ReminderPatch {
     pub interval_minutes: Option<u32>,
     pub schedule: Option<Schedule>,
     pub intensity: Option<Intensity>,
+    pub duration_secs: Option<u32>,
     pub enabled: Option<bool>,
     pub rules: Option<Rules>,
 }
@@ -333,6 +334,9 @@ pub fn update_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, patc
         }
         if let Some(intensity) = patch.intensity {
             r.intensity = intensity;
+        }
+        if let Some(secs) = patch.duration_secs {
+            r.duration_secs = secs.clamp(5, 60 * 60);
         }
         if let Some(enabled) = patch.enabled {
             r.enabled = enabled;

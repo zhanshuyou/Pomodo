@@ -57,6 +57,8 @@ pub struct FirePayload {
     pub color: String,
     /// Only meaningful for `Fullscreen`; the overlay hides its exits.
     pub must_complete: bool,
+    /// The overlay's countdown, in seconds.
+    pub duration_secs: u32,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
