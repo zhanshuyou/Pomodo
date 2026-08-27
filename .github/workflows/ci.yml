@@ -54,6 +54,7 @@ jobs:
 
       # Tauri links against the system WebKitGTK stack; see
       # https://tauri.app/start/prerequisites/
+      # libasound2-dev: rodio's cpal backend links ALSA on Linux (reminder tones).
       - name: Install Tauri system dependencies
         run: |
           sudo apt-get update
@@ -62,7 +63,8 @@ jobs:
             libgtk-3-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            libxdo-dev
+            libxdo-dev \
+            libasound2-dev
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -108,7 +110,8 @@ jobs:
             libgtk-3-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            libxdo-dev
+            libxdo-dev \
+            libasound2-dev
 
       - uses: Swatinem/rust-cache@v2
         with:
