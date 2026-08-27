@@ -1,7 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Pet from "../../lib/components/Pet.svelte";
-  import { type FirePayload, ackReminder, hideBubble, onBubbleShow } from "../../lib/ipc";
+  import {
+    type FirePayload,
+    ackReminder,
+    hideBubble,
+    ignoreReminder,
+    onBubbleShow,
+  } from "../../lib/ipc";
   import { PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
 
@@ -18,7 +24,12 @@
     const un = onBubbleShow((payload) => {
       fire = payload;
       clearTimeout(timer);
-      timer = setTimeout(() => void hideBubble(), AUTO_DISMISS_MS);
+      // Letting it slide off counts as ignoring it — that is what feeds the
+      // 连续忽略 N 次 escalation. Pressing 好 acknowledges instead.
+      timer = setTimeout(() => {
+        void ignoreReminder(payload.id);
+        void hideBubble();
+      }, AUTO_DISMISS_MS);
     });
     return () => {
       clearTimeout(timer);
@@ -39,6 +50,7 @@
       class="ack"
       type="button"
       onclick={() => {
+        clearTimeout(timer);
         if (fire) void ackReminder(fire.id);
         void hideBubble();
       }}

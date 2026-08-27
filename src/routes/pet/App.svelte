@@ -8,6 +8,7 @@
     type FirePayload,
     ackReminder,
     hidePet,
+    ignoreReminder,
     onPetNudge,
     petInteracted,
     setPetPlacement,
@@ -48,7 +49,11 @@
     const un = onPetNudge((payload) => {
       nudge = payload;
       clearTimeout(nudgeTimer);
-      nudgeTimer = setTimeout(() => (nudge = null), NUDGE_MS);
+      // An unanswered hop is an ignore, for escalation purposes.
+      nudgeTimer = setTimeout(() => {
+        void ignoreReminder(payload.id);
+        nudge = null;
+      }, NUDGE_MS);
     });
     return () => {
       clearTimeout(nudgeTimer);
@@ -106,6 +111,7 @@
     // A pending nudge is answered by a single click — it is a direct reply to a
     // prompt, not something you hit by accident.
     if (nudge) {
+      clearTimeout(nudgeTimer);
       void ackReminder(nudge.id);
       nudge = null;
       lastClickAt = 0;

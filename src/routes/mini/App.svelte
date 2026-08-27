@@ -7,6 +7,7 @@
     type FirePayload,
     IS_TAURI,
     ackReminder,
+    ignoreReminder,
     onMiniNudge,
     pause,
     setMiniHeight,
@@ -55,12 +56,18 @@
   export function receiveNudge(payload: FirePayload): void {
     nudge = payload;
     clearTimeout(nudgeTimer);
-    nudgeTimer = setTimeout(collapse, NUDGE_MS);
+    nudgeTimer = setTimeout(expire, NUDGE_MS);
   }
 
   function collapse(): void {
     clearTimeout(nudgeTimer);
     nudge = null;
+  }
+
+  /** Swelled and shrank again with nobody touching it: that is an ignore. */
+  function expire(): void {
+    if (nudge) void ignoreReminder(nudge.id);
+    collapse();
   }
 
   /**

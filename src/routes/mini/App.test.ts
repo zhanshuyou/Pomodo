@@ -5,6 +5,15 @@ import type { FirePayload } from "../../lib/ipc";
 import { app } from "../../lib/state.svelte";
 import MiniBar from "./App.svelte";
 
+const ipcSpies = vi.hoisted(() => ({
+  ackReminder: vi.fn(async () => {}),
+  ignoreReminder: vi.fn(async () => {}),
+}));
+vi.mock("../../lib/ipc", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/ipc")>()),
+  ...ipcSpies,
+}));
+
 const FOCUS_TASK = {
   id: 0,
   name: "写产品需求文档",
@@ -122,5 +131,27 @@ describe("mini bar", () => {
     vi.advanceTimersByTime(12_000);
     flushSync();
     expect(host.querySelector(".nudge")).toBeNull();
+    // Nobody answered, so this one counts toward 连续忽略 N 次.
+    expect(ipcSpies.ignoreReminder).toHaveBeenCalledWith(1);
+    expect(ipcSpies.ackReminder).not.toHaveBeenCalled();
+  });
+
+  it("answering the nudge acknowledges rather than ignores", () => {
+    ipcSpies.ackReminder.mockClear();
+    ipcSpies.ignoreReminder.mockClear();
+    component.receiveNudge({
+      id: 2,
+      name: "喝水",
+      message: "喝口水",
+      intensity: "pet",
+      color: "oklch(0.66 0.09 195)",
+    });
+    flushSync();
+    host.querySelector<HTMLElement>(".nudge")?.click();
+    flushSync();
+    vi.advanceTimersByTime(12_000);
+    flushSync();
+    expect(ipcSpies.ackReminder).toHaveBeenCalledWith(2);
+    expect(ipcSpies.ignoreReminder).not.toHaveBeenCalled();
   });
 });
