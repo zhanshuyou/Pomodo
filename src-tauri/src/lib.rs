@@ -159,6 +159,7 @@ pub fn run() {
             commands::set_mini_mode,
             commands::toggle_mini_mode,
             commands::set_mini_height,
+            commands::set_window_height,
             commands::set_mini_placement,
             commands::pet_interacted,
             commands::set_pet_hit_rects,

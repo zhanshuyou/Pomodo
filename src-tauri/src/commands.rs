@@ -588,6 +588,11 @@ pub fn set_mini_height(app: AppHandle, height: f64) {
 }
 
 #[tauri::command]
+pub fn set_window_height(app: AppHandle, label: String, height: f64) {
+    crate::windows::set_window_height(&app, &label, height);
+}
+
+#[tauri::command]
 pub fn set_mini_placement(state: State<'_, AppState>, app: AppHandle, x: f64, y: f64) {
     let snap_edges = state.with(|m| m.settings.pet_flags.snap_edges);
     let screen = crate::windows::primary_screen_rect(&app);

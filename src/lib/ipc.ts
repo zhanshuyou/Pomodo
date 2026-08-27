@@ -319,6 +319,12 @@ export const showMain = () => invoke<void>("show_main");
 export const setMiniMode = (value: boolean) =>
   invoke<void>("set_mini_mode", { value });
 export const toggleMiniMode = () => invoke<void>("toggle_mini_mode");
+/**
+ * A window that lays out variable content asks to be exactly as tall as it
+ * rendered — Rust cannot measure the webview. No-op outside Tauri.
+ */
+export const setWindowHeight = (label: "tray" | "bubble", height: number): Promise<void> =>
+  IS_TAURI ? invoke<void>("set_window_height", { label, height }) : Promise.resolve();
 export const setMiniHeight = (height: number) =>
   invoke<void>("set_mini_height", { height });
 export const setMiniPlacement = (x: number, y: number) =>

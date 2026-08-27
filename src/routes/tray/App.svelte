@@ -7,8 +7,11 @@
     type TodaySummary,
     type UpNextItem,
     IS_TAURI,
+    onChanged,
+    onPhase,
     openPrefs,
     pause,
+    setWindowHeight,
     showMain,
     skipPhase,
     start,
@@ -21,6 +24,7 @@
 
   let next = $state<UpNextItem[]>([]);
   let today = $state<TodaySummary | null>(null);
+  let root = $state<HTMLElement | null>(null);
 
   const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
   const accent = $derived(ACCENTS[app.settings.accent]);
@@ -44,13 +48,29 @@
 
   onMount(() => {
     void app.init().then(refreshLists);
-    // The up-next column counts down in whole minutes; refreshing every 15 s is
-    // frequent enough to look live without re-invoking on every timer tick.
-    const handle = setInterval(() => void refreshLists(), 15_000);
+    // Anything that changes the model (a pomodoro completing, a reminder
+    // edited or acknowledged) refreshes the lists at once; the interval only
+    // keeps the 分钟后 column ticking in between.
+    const unChanged = onChanged(() => void refreshLists());
+    const unPhase = onPhase(() => void refreshLists());
+    const handle = setInterval(() => void refreshLists(), 60_000);
     return () => {
       clearInterval(handle);
+      void unChanged.then((f) => f());
+      void unPhase.then((f) => f());
       app.dispose();
     };
+  });
+
+  // The popover holds 0–3 up-next rows, so its height is content-driven.
+  $effect(() => {
+    const el = root;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const report = () => void setWindowHeight("tray", el.offsetHeight);
+    report();
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    return () => ro.disconnect();
   });
 
   $effect(() => {
@@ -58,7 +78,7 @@
   });
 </script>
 
-<div class="popover">
+<div class="popover" bind:this={root}>
   <div class="head">
     <div
       class="ring"

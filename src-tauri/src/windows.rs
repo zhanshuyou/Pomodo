@@ -189,6 +189,25 @@ pub fn set_mini_height(app: &AppHandle, height: f64) {
     let _ = window.set_size(LogicalSize::new(MINI_SIZE.0, clamp_mini_height(height)));
 }
 
+/// The same self-measurement the mini bar does, for any window that
+/// `window_height_bounds` allows. The tray is re-anchored under the status
+/// item afterwards, since the positioner placed it for its old height.
+pub fn set_window_height(app: &AppHandle, label: &str, height: f64) {
+    let Some((width, min, max)) = crate::core::desk::window_height_bounds(label) else {
+        return;
+    };
+    let Some(window) = app.get_webview_window(label) else {
+        return;
+    };
+    let _ = window.set_size(LogicalSize::new(width, height.clamp(min, max)));
+    if label == "tray" && window.is_visible().unwrap_or(false) {
+        let _ = tauri_plugin_positioner::WindowExt::move_window(
+            &window,
+            tauri_plugin_positioner::Position::TrayBottomCenter,
+        );
+    }
+}
+
 /// Create the pet window if needed, give it the desktop layer treatment, and put
 /// it back where the user left it. Does nothing while the pet is dismissed.
 pub fn ensure_pet(app: &AppHandle) -> tauri::Result<()> {

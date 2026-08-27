@@ -8,6 +8,7 @@
     SNOOZE_MINUTES,
     ignoreReminder,
     onBubbleShow,
+    setWindowHeight,
     snoozeReminder,
   } from "../../lib/ipc";
   import { snoozeLabel } from "../../lib/copy";
@@ -19,6 +20,18 @@
 
   let fire = $state<FirePayload | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let toast = $state<HTMLElement | null>(null);
+
+  // A long message wraps; the window follows the toast's rendered height.
+  $effect(() => {
+    const el = toast;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const report = () => void setWindowHeight("bubble", el.offsetHeight + 16);
+    report();
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
 
   const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
 
@@ -43,7 +56,7 @@
 </script>
 
 {#if fire}
-  <div class="toast">
+  <div class="toast" bind:this={toast}>
     <Pet scale={3} slot="nag" alt={pet.name} />
     <div class="text">
       <span class="title">{fire.name}</span>

@@ -77,6 +77,19 @@ pub fn clamp_mini_height(height: f64) -> f64 {
     height.clamp(MINI_SIZE.1, MINI_MAX_HEIGHT)
 }
 
+/// Fixed width and the sane height range for each window that measures its
+/// own content and asks to be resized. `None` for a window that must not.
+pub fn window_height_bounds(label: &str) -> Option<(f64, f64, f64)> {
+    match label {
+        "mini" => Some((MINI_SIZE.0, MINI_SIZE.1, MINI_MAX_HEIGHT)),
+        // The popover: ring row + up to three up-next rows + footer.
+        "tray" => Some((330.0, 200.0, 600.0)),
+        // A toast; a long message wraps rather than clips.
+        "bubble" => Some((360.0, 60.0, 320.0)),
+        _ => None,
+    }
+}
+
 /// A rectangle inside the pet window that should receive clicks, in logical
 /// pixels relative to the window's top-left. The webview measures these (the
 /// sprite, the speech bubble); Rust only needs to know where they are.
@@ -255,6 +268,15 @@ mod tests {
     #[test]
     fn a_bar_carrying_a_two_line_reminder_grows_to_fit_it() {
         assert_eq!(clamp_mini_height(127.0), 127.0);
+    }
+
+    #[test]
+    fn only_the_self_measuring_windows_may_ask_for_a_height() {
+        assert!(window_height_bounds("tray").is_some());
+        assert!(window_height_bounds("bubble").is_some());
+        assert_eq!(window_height_bounds("mini"), Some((260.0, 52.0, 260.0)));
+        assert_eq!(window_height_bounds("main"), None);
+        assert_eq!(window_height_bounds("overlay-3"), None);
     }
 
     #[test]
