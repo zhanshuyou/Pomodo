@@ -76,12 +76,18 @@ describe("FocusTab", () => {
   });
 
   it("renders the pet speech bubble and the ends-at line", () => {
+    // A full, never-started focus round: the pet asks what is up, not "还有 25 分钟".
     expect(host.querySelector(".bubble")?.textContent?.trim()).toBe(
-      "还有 25 分钟，我盯着你呢",
+      "今天要啃点什么？我准备好了",
     );
+    // Paused: a clock-time ETA would go stale, so it is not shown at all.
+    expect(host.querySelector(".ends")?.textContent).toBe("已暂停");
+    app.model.timer.running = true;
+    flushSync();
     expect(host.querySelector(".ends")?.textContent).toMatch(
       /^预计 \d{2}:\d{2} 结束$/,
     );
+    app.model.timer.running = false;
   });
 
   it("renders a canvas for the pet", () => {

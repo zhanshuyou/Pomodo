@@ -156,7 +156,7 @@ describe("desktop pet", () => {
 
   it("shows the tone-aware pet line when not being nudged", () => {
     expect(host.querySelector(".bubble")?.textContent?.trim()).toBe(
-      "还有 25 分钟，我盯着你呢",
+      "今天要啃点什么？我准备好了",
     );
     expect(host.querySelector(".bubble.nudging")).toBeNull();
   });

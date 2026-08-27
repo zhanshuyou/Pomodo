@@ -56,11 +56,20 @@
 
     <div class="clock">
       <span class="mmss">{mmss(remaining)}</span>
-      <span class="ends">{endsAt(remaining)}</span>
+      {#if app.timer.running}
+        <span class="ends">{endsAt(remaining)}</span>
+      {:else}
+        <span class="ends">已暂停</span>
+      {/if}
     </div>
 
     <SpeechBubble maxWidth={340}>
-      {petLine(app.tone, minutesLeft(remaining))}
+      {petLine(app.tone, {
+      phase: app.timer.phase,
+      running: app.timer.running,
+      minutes: minutesLeft(remaining),
+      started: remaining !== app.settings.focusSecs,
+    })}
     </SpeechBubble>
 
     <div class="actions">

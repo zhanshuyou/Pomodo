@@ -12,13 +12,32 @@ export function tagline(t: Tone): string {
   );
 }
 
-export function petLine(t: Tone, minutes: number): string {
-  return tone(
-    t,
-    `本轮剩余 ${minutes} 分钟。`,
-    `再 ${minutes} 分钟就好，我陪着你。`,
-    `还有 ${minutes} 分钟，我盯着你呢`,
-  );
+export interface PetLineState {
+  phase: Phase;
+  running: boolean;
+  /** Minutes left in the current phase. */
+  minutes: number;
+  /** Whether a focus round has ever been started this session. */
+  started?: boolean;
+}
+
+/**
+ * What the pet says when nothing is being nagged. The spec only wrote the
+ * focus-running line; the rest keep it from counting down a timer that is
+ * not running or calling a break "本轮剩余".
+ */
+export function petLine(t: Tone, s: PetLineState): string {
+  const m = s.minutes;
+  if (s.running && s.phase === "focus") {
+    return tone(t, `本轮剩余 ${m} 分钟。`, `再 ${m} 分钟就好，我陪着你。`, `还有 ${m} 分钟，我盯着你呢`);
+  }
+  if (s.running) {
+    return tone(t, `休息剩余 ${m} 分钟。`, `歇 ${m} 分钟，我也躺会儿。`, `还能歇 ${m} 分钟，别偷偷干活`);
+  }
+  if (s.started ?? s.phase !== "focus") {
+    return tone(t, "已暂停。", "先停一下，等你回来。", "停住了，我在这儿等你");
+  }
+  return tone(t, "尚未开始。", "今天要啃点什么？", "今天要啃点什么？我准备好了");
 }
 
 export interface VerdictInput {
@@ -137,6 +156,11 @@ export function phaseLabel(phase: Phase): string {
 
 export function runLabel(running: boolean): string {
   return running ? "让它歇会儿" : "开始专注";
+}
+
+/** The tray popover has room for two characters, as on the artboard. */
+export function runLabelShort(running: boolean): string {
+  return running ? "暂停" : "开始";
 }
 
 export function miniLabel(mini: boolean): string {

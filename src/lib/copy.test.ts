@@ -7,6 +7,7 @@ import {
   phaseLabel,
   roundsUntilLongBreak,
   runLabel,
+  runLabelShort,
   snoozeLabel,
   tagline,
 } from "./copy";
@@ -26,10 +27,30 @@ describe("tagline", () => {
 });
 
 describe("petLine", () => {
-  it("interpolates the minute count per tone", () => {
-    expect(petLine("professional", 12)).toBe("本轮剩余 12 分钟。");
-    expect(petLine("gentle", 12)).toBe("再 12 分钟就好，我陪着你。");
-    expect(petLine("playful", 12)).toBe("还有 12 分钟，我盯着你呢");
+  const focus = { phase: "focus" as const, running: true, minutes: 12 };
+
+  it("interpolates the minute count per tone while focusing", () => {
+    expect(petLine("professional", focus)).toBe("本轮剩余 12 分钟。");
+    expect(petLine("gentle", focus)).toBe("再 12 分钟就好，我陪着你。");
+    expect(petLine("playful", focus)).toBe("还有 12 分钟，我盯着你呢");
+  });
+
+  it("does not say 本轮剩余 during a break", () => {
+    const rest = { phase: "shortBreak" as const, running: true, minutes: 4 };
+    expect(petLine("professional", rest)).toBe("休息剩余 4 分钟。");
+    expect(petLine("playful", rest)).toContain("别偷偷干活");
+  });
+
+  it("tells paused and never-started apart", () => {
+    expect(petLine("gentle", { phase: "focus", running: false, minutes: 25 })).toBe(
+      "今天要啃点什么？",
+    );
+    expect(
+      petLine("gentle", { phase: "focus", running: false, minutes: 10, started: true }),
+    ).toBe("先停一下，等你回来。");
+    expect(petLine("gentle", { phase: "longBreak", running: false, minutes: 15 })).toBe(
+      "先停一下，等你回来。",
+    );
   });
 });
 
@@ -56,6 +77,13 @@ describe("petVerdict", () => {
     expect(petVerdict("professional", empty)).toBe("本周尚无专注记录。");
     const flat = { weekFocusSecs: 3600, weekDeltaPct: 0, interruptionsDelta: 0 };
     expect(petVerdict("gentle", flat)).toBe("这周专注了 1 小时，稳稳的。");
+  });
+});
+
+describe("runLabelShort", () => {
+  it("is the artboard's two-character tray label", () => {
+    expect(runLabelShort(true)).toBe("暂停");
+    expect(runLabelShort(false)).toBe("开始");
   });
 });
 

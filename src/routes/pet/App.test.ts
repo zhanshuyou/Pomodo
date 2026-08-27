@@ -9,6 +9,8 @@ const ipcSpies = vi.hoisted(() => ({
   ignoreReminder: vi.fn(async () => {}),
   onPetNudge: vi.fn((_cb: (p: unknown) => void) => Promise.resolve(() => {})),
   setPetHitRects: vi.fn(async (_rects: import("../../lib/ipc").HitRect[]) => {}),
+  showMain: vi.fn(async () => {}),
+  petInteracted: vi.fn(async () => {}),
 }));
 vi.mock("../../lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/ipc")>()),
@@ -46,7 +48,7 @@ describe("desktop pet mood", () => {
     expect(host.querySelector("canvas")?.classList.contains("pet--bob")).toBe(
       true,
     );
-    expect(host.querySelector(".bubble")?.textContent).toContain("25");
+    expect(host.querySelector(".bubble")?.textContent).toContain("今天要啃点什么");
   });
 
   it("hops while nagging", () => {
@@ -99,6 +101,18 @@ describe("desktop pet mood", () => {
     expect(ipcSpies.ignoreReminder).toHaveBeenCalledWith(5);
     expect(host.querySelector(".bubble.nudging")).toBeNull();
     vi.useRealTimers();
+  });
+
+  it("only opens the main window on Enter when 点击互动 is on", () => {
+    ipcSpies.showMain.mockClear();
+    app.model.settings.petFlags.clickInteract = false;
+    render();
+    const wrap = host.querySelector<HTMLElement>(".petwrap")!;
+    wrap.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(ipcSpies.showMain).not.toHaveBeenCalled();
+    app.model.settings.petFlags.clickInteract = true;
+    wrap.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(ipcSpies.showMain).toHaveBeenCalledTimes(1);
   });
 
   it("wakes up again when the mood changes back", () => {

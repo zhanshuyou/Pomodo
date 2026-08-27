@@ -59,7 +59,7 @@ describe("tray popover", () => {
   });
 
   it("shows the running transport labels", () => {
-    expect(host.querySelector(".primary")?.textContent?.trim()).toBe("让它歇会儿");
+    expect(host.querySelector(".primary")?.textContent?.trim()).toBe("暂停");
     expect(host.querySelector(".secondary")?.textContent?.trim()).toBe("跳过");
   });
 
@@ -77,7 +77,7 @@ describe("tray popover", () => {
   it("switches the primary label when the timer is paused", () => {
     app.model.timer.running = false;
     flushSync();
-    expect(host.querySelector(".primary")?.textContent?.trim()).toBe("开始专注");
+    expect(host.querySelector(".primary")?.textContent?.trim()).toBe("开始");
   });
 
   it("relabels the phase during a break", () => {

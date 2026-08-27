@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Pet from "../../lib/components/Pet.svelte";
-  import { phaseLabel, runLabel } from "../../lib/copy";
+  import { phaseLabel, runLabelShort } from "../../lib/copy";
   import { mmss } from "../../lib/format";
   import {
     type TodaySummary,
@@ -81,7 +81,7 @@
           type="button"
           onclick={() => void (app.timer.running ? pause() : start())}
         >
-          {runLabel(app.timer.running)}
+          {runLabelShort(app.timer.running)}
         </button>
         <button class="secondary" type="button" onclick={() => void skipPhase()}>跳过</button>
       </div>

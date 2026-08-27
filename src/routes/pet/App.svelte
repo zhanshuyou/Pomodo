@@ -47,7 +47,13 @@
         : "bob",
   );
   const bubbleText = $derived(
-    nudge?.message ?? petLine(app.tone, minutesLeft(app.timer.remainingSecs)),
+    nudge?.message ??
+      petLine(app.tone, {
+      phase: app.timer.phase,
+      running: app.timer.running,
+      minutes: minutesLeft(app.timer.remainingSecs),
+      started: app.timer.remainingSecs !== app.settings.focusSecs,
+    }),
   );
 
   /**
@@ -163,7 +169,10 @@
   }
 
   function onKey(event: KeyboardEvent) {
-    if (event.key === "Enter") void showMain();
+    if (event.key !== "Enter") return;
+    void petInteracted();
+    if (!app.settings.petFlags.clickInteract) return;
+    void showMain();
   }
 </script>
 

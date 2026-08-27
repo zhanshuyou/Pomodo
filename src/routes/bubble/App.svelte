@@ -90,7 +90,18 @@
     gap: 12px;
     align-items: center;
     box-shadow: 0 18px 40px -16px oklch(0.2 0.02 260 / 0.7);
-    animation: momo-rise 0.35s ease both;
+    /* 右上角滑入 — from the right edge, not the momo-rise lift. */
+    animation: bubble-slide-in 0.35s ease both;
+  }
+  @keyframes bubble-slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
   .text {
     display: flex;
