@@ -8,6 +8,7 @@ const ipcSpies = vi.hoisted(() => ({
   ackReminder: vi.fn(async () => {}),
   ignoreReminder: vi.fn(async () => {}),
   onPetNudge: vi.fn(),
+  setPetHitRects: vi.fn(async (_rects: import("../../lib/ipc").HitRect[]) => {}),
 }));
 vi.mock("../../lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/ipc")>()),
@@ -62,6 +63,17 @@ describe("desktop pet mood", () => {
     const canvas = host.querySelector("canvas");
     expect(canvas?.classList.contains("pet--sleep")).toBe(true);
     expect(host.querySelector(".bubble")?.textContent?.trim()).toBe("zzz…");
+  });
+
+  it("reports the sprite and bubble rects so Rust can open the click-through", () => {
+    ipcSpies.setPetHitRects.mockClear();
+    render();
+    expect(ipcSpies.setPetHitRects).toHaveBeenCalled();
+    const rects = ipcSpies.setPetHitRects.mock.calls.at(-1)![0];
+    // jsdom lays nothing out, so the boxes are empty — but there are two of them.
+    expect(rects).toHaveLength(2);
+    (component as unknown as { reportHitRects: () => void }).reportHitRects();
+    expect(ipcSpies.setPetHitRects).toHaveBeenCalledTimes(2);
   });
 
   it("records an ignore when a nudge times out unanswered", () => {

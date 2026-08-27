@@ -13,6 +13,8 @@
     onPetNudge,
     snoozeReminder,
     petInteracted,
+    setPetDragging,
+    setPetHitRects,
     setPetPlacement,
     showMain,
   } from "../../lib/ipc";
@@ -27,6 +29,8 @@
 
   let nudge = $state<FirePayload | null>(null);
   let dragging = $state(false);
+  let petEl = $state<HTMLElement | null>(null);
+  let bubbleEl = $state<HTMLElement | null>(null);
   let nudgeTimer: ReturnType<typeof setTimeout> | undefined;
 
   let pressOrigin: { x: number; y: number } | null = null;
@@ -45,6 +49,30 @@
   const bubbleText = $derived(
     nudge?.message ?? petLine(app.tone, minutesLeft(app.timer.remainingSecs)),
   );
+
+  /**
+   * Tell Rust where the clickable parts are. The window ignores the mouse
+   * everywhere else, and it cannot measure the webview's layout itself.
+   * Exported so the test can trigger a report without a ResizeObserver.
+   */
+  export function reportHitRects(): void {
+    const rects = [petEl, bubbleEl]
+      .filter((el): el is HTMLElement => !!el)
+      .map((el) => el.getBoundingClientRect())
+      .map((r) => ({ x: r.left, y: r.top, width: r.width, height: r.height }));
+    void setPetHitRects(rects);
+  }
+
+  $effect(() => {
+    // Re-measure whenever the bubble's content or the nudge state changes.
+    void bubbleText;
+    void nudge;
+    reportHitRects();
+    if (typeof ResizeObserver === "undefined" || !bubbleEl) return;
+    const ro = new ResizeObserver(() => reportHitRects());
+    ro.observe(bubbleEl);
+    return () => ro.disconnect();
+  });
 
   onMount(() => {
     void app.init();
@@ -91,15 +119,20 @@
 
   async function beginDrag() {
     dragging = true;
+    await setPetDragging(true);
     const win = getCurrentWindow();
-    await win.startDragging();
-    // Read the position back once the native drag finishes; Rust applies edge
-    // snapping and stores it.
-    const pos = await win.outerPosition();
-    const scale = await win.scaleFactor();
-    dragging = false;
-    pressOrigin = null;
-    await setPetPlacement(pos.x / scale, pos.y / scale);
+    try {
+      await win.startDragging();
+      // Read the position back once the native drag finishes; Rust applies edge
+      // snapping and stores it.
+      const pos = await win.outerPosition();
+      const scale = await win.scaleFactor();
+      await setPetPlacement(pos.x / scale, pos.y / scale);
+    } finally {
+      dragging = false;
+      pressOrigin = null;
+      await setPetDragging(false);
+    }
   }
 
   function onPointerUp() {
@@ -137,6 +170,7 @@
 <div class="stage">
   <div
     class="petwrap"
+    bind:this={petEl}
     role="button"
     tabindex="0"
     aria-label="{pet.name}（双击打开 Pomodo）"
@@ -163,7 +197,12 @@
     </button>
   </div>
 
-  <div class="bubble" class:nudging={!!nudge} class:dozing={anim === "sleep"}>
+  <div
+    class="bubble"
+    bind:this={bubbleEl}
+    class:nudging={!!nudge}
+    class:dozing={anim === "sleep"}
+  >
     {anim === "sleep" && !nudge ? "zzz…" : bubbleText}
     {#if nudge}
       <button

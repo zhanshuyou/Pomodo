@@ -77,6 +77,25 @@ pub fn clamp_mini_height(height: f64) -> f64 {
     height.clamp(MINI_SIZE.1, MINI_MAX_HEIGHT)
 }
 
+/// A rectangle inside the pet window that should receive clicks, in logical
+/// pixels relative to the window's top-left. The webview measures these (the
+/// sprite, the speech bubble); Rust only needs to know where they are.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HitRect {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+/// Is the point (window-local, logical) over anything clickable?
+pub fn hits(rects: &[HitRect], x: f64, y: f64) -> bool {
+    rects
+        .iter()
+        .any(|r| x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height)
+}
+
 /// Whether the desktop pet belongs on screen at all. Mini mode carries its own
 /// 35px cat in the bar, so a second one on the desktop would just be a duplicate
 /// — but a pet the user dismissed stays dismissed once mini mode ends.
@@ -263,6 +282,22 @@ mod tests {
     #[test]
     fn a_dismissed_pet_stays_dismissed_when_mini_mode_ends() {
         assert!(!pet_should_show(false, false));
+    }
+
+    #[test]
+    fn hits_is_inclusive_at_the_origin_and_exclusive_at_the_far_edge() {
+        let r = [HitRect {
+            x: 8.0,
+            y: 64.0,
+            width: 128.0,
+            height: 128.0,
+        }];
+        assert!(hits(&r, 8.0, 64.0));
+        assert!(hits(&r, 135.9, 191.9));
+        assert!(!hits(&r, 136.0, 100.0));
+        assert!(!hits(&r, 100.0, 192.0));
+        assert!(!hits(&r, 7.9, 100.0));
+        assert!(!hits(&[], 50.0, 100.0));
     }
 
     #[test]

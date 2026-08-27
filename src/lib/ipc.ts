@@ -326,6 +326,17 @@ export const onPetNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
 export const onPetState = (
   cb: (p: PetStatePayload) => void,
 ): Promise<UnlistenFn> => subscribe<PetStatePayload>("pet:state", cb);
+export interface HitRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+/** Where the pet window is clickable; everywhere else lets the mouse through. */
+export const setPetHitRects = (rects: HitRect[]) =>
+  invoke<void>("set_pet_hit_rects", { rects });
+export const setPetDragging = (dragging: boolean) =>
+  invoke<void>("set_pet_dragging", { dragging });
 /** The user poked the pet — wakes it from 睡眠动画. */
 export const petInteracted = () => invoke<void>("pet_interacted");
 export const onMiniNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>

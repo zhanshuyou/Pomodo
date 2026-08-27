@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Emitter};
 
+use crate::core::desk::HitRect;
 use crate::core::reminder::{Intensity, TickOutcome};
 use crate::events::{self, ChangedPayload, FirePayload, PetStatePayload, Section, TickPayload};
 use crate::model::{Model, Phase};
@@ -14,6 +15,22 @@ pub struct AppState {
     model: Mutex<Model>,
     pub store: Store,
     last_save: Mutex<Instant>,
+    /// Click-through bookkeeping for the pet window; see `windows::poll_pet_hit`.
+    pub pet_hit: Mutex<PetHit>,
+}
+
+/// The pet window is transparent almost everywhere, so it ignores the mouse by
+/// default and is switched back on only while the cursor is over something the
+/// webview reported as clickable. Once the window ignores cursor events it stops
+/// receiving pointer events, so the webview cannot notice the cursor coming
+/// back — Rust polls the global cursor instead.
+#[derive(Debug, Default)]
+pub struct PetHit {
+    pub rects: Vec<HitRect>,
+    /// A native drag is in progress; leave the window alone until it ends.
+    pub dragging: bool,
+    /// What the window was last told, so the poll only calls into AppKit on change.
+    pub ignoring: Option<bool>,
 }
 
 impl AppState {
@@ -25,6 +42,7 @@ impl AppState {
             store,
             // Start a full interval in the past so the first save is not suppressed.
             last_save: Mutex::new(Instant::now() - SAVE_INTERVAL),
+            pet_hit: Mutex::new(PetHit::default()),
         }
     }
 
@@ -39,6 +57,11 @@ impl AppState {
 
     pub fn snapshot(&self) -> Model {
         self.with(|m| m.clone())
+    }
+
+    pub fn with_pet_hit<R>(&self, f: impl FnOnce(&mut PetHit) -> R) -> R {
+        let mut guard = self.pet_hit.lock().unwrap_or_else(|e| e.into_inner());
+        f(&mut guard)
     }
 
     pub fn save_debounced(&self) {

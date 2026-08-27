@@ -212,6 +212,18 @@ pub fn ensure_pet(app: &AppHandle) -> tauri::Result<()> {
     };
 
     platform().make_desktop_layer(&window);
+    // Ignore the mouse until the poll finds the cursor over the sprite; a
+    // freshly shown window must not swallow clicks meant for the desktop.
+    if let Some(state) = app.try_state::<crate::state::AppState>() {
+        let fresh = state.with_pet_hit(|h| {
+            let fresh = h.ignoring != Some(true);
+            h.ignoring = Some(true);
+            fresh
+        });
+        if fresh {
+            platform().set_click_through(&window, true);
+        }
+    }
 
     let screen = primary_screen_rect(app);
     let stored = app
@@ -228,6 +240,49 @@ pub fn ensure_pet(app: &AppHandle) -> tauri::Result<()> {
         window.show()?;
     }
     Ok(())
+}
+
+/// How often the cursor is checked against the pet's clickable regions. Fast
+/// enough that hovering onto the pet feels immediate; cheap enough to run forever.
+pub const PET_HIT_POLL: std::time::Duration = std::time::Duration::from_millis(80);
+
+/// One poll of the click-through state machine. Called from a background
+/// thread; every Tauri call here marshals to the main thread itself.
+pub fn poll_pet_hit(app: &AppHandle) {
+    let Some(state) = app.try_state::<crate::state::AppState>() else {
+        return;
+    };
+    let Some(window) = app.get_webview_window("pet") else {
+        return;
+    };
+    if !window.is_visible().unwrap_or(false) {
+        return;
+    }
+    let inside = {
+        let (rects, dragging) = state.with_pet_hit(|h| (h.rects.clone(), h.dragging));
+        if dragging {
+            return;
+        }
+        let (Ok(cursor), Ok(origin), Ok(scale)) = (
+            app.cursor_position(),
+            window.outer_position(),
+            window.scale_factor(),
+        ) else {
+            return;
+        };
+        let x = (cursor.x - origin.x as f64) / scale;
+        let y = (cursor.y - origin.y as f64) / scale;
+        crate::core::desk::hits(&rects, x, y)
+    };
+    let ignore = !inside;
+    let changed = state.with_pet_hit(|h| {
+        let changed = h.ignoring != Some(ignore);
+        h.ignoring = Some(ignore);
+        changed
+    });
+    if changed {
+        platform().set_click_through(&window, ignore);
+    }
 }
 
 pub fn hide_pet(app: &AppHandle) {

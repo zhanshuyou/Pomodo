@@ -587,6 +587,20 @@ pub fn set_mini_placement(state: State<'_, AppState>, app: AppHandle, x: f64, y:
     state.flush();
 }
 
+/// The pet window reports where its clickable parts are (sprite, bubble) so the
+/// click-through poll in windows.rs knows when to let the mouse in.
+#[tauri::command]
+pub fn set_pet_hit_rects(state: State<'_, AppState>, rects: Vec<crate::core::desk::HitRect>) {
+    state.with_pet_hit(|h| h.rects = rects);
+}
+
+/// A native drag hands the mouse loop to the OS; toggling cursor events under
+/// it would cut the drag short, so the poll sits out until the drag ends.
+#[tauri::command]
+pub fn set_pet_dragging(state: State<'_, AppState>, dragging: bool) {
+    state.with_pet_hit(|h| h.dragging = dragging);
+}
+
 /// The user poked the pet. Wakes it if it was dozing; nothing else changes.
 #[tauri::command]
 pub fn pet_interacted(state: State<'_, AppState>, app: AppHandle) {

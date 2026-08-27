@@ -73,6 +73,13 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            // Click-through for the pet window: see windows::poll_pet_hit.
+            let handle = app.handle().clone();
+            thread::spawn(move || loop {
+                thread::sleep(windows::PET_HIT_POLL);
+                windows::poll_pet_hit(&handle);
+            });
+
             let handle = app.handle().clone();
             thread::spawn(move || {
                 // Elapsed time comes from a monotonic instant, not from counting
@@ -154,6 +161,8 @@ pub fn run() {
             commands::set_mini_height,
             commands::set_mini_placement,
             commands::pet_interacted,
+            commands::set_pet_hit_rects,
+            commands::set_pet_dragging,
             commands::set_pet_placement,
             commands::show_pet,
             commands::hide_pet,
