@@ -312,6 +312,37 @@ pub fn hide_pet(app: &AppHandle) {
 
 /// Hide the pet while a full-screen app owns the screen, when 全屏时隐藏 is on.
 /// The macOS check needs the main thread, so it is hopped there.
+/// The monitor a window's top-left corner is on, as a logical rect; the
+/// primary screen when that cannot be determined.
+fn screen_of(app: &AppHandle, window: &tauri::WebviewWindow) -> ScreenRect {
+    let Ok(pos) = window.outer_position() else {
+        return primary_screen_rect(app);
+    };
+    let monitors = app.available_monitors().unwrap_or_default();
+    monitors
+        .into_iter()
+        .find(|m| {
+            let p = m.position();
+            let s = m.size();
+            pos.x >= p.x
+                && pos.y >= p.y
+                && pos.x < p.x + s.width as i32
+                && pos.y < p.y + s.height as i32
+        })
+        .map(|m| {
+            let scale = m.scale_factor();
+            let p = m.position().to_logical::<f64>(scale);
+            let s = m.size().to_logical::<f64>(scale);
+            ScreenRect {
+                x: p.x,
+                y: p.y,
+                width: s.width,
+                height: s.height,
+            }
+        })
+        .unwrap_or_else(|| primary_screen_rect(app))
+}
+
 pub fn sync_pet_visibility(app: &AppHandle, hide_when_fullscreen: bool) {
     let handle = app.clone();
     let wanted = pet_wanted(app);
@@ -319,9 +350,11 @@ pub fn sync_pet_visibility(app: &AppHandle, hide_when_fullscreen: bool) {
         let Some(window) = handle.get_webview_window("pet") else {
             return;
         };
-        // A dismissed pet stays dismissed; only then does full-screen matter.
-        let should_show =
-            wanted && !(hide_when_fullscreen && platform().fullscreen_app_frontmost());
+        // A dismissed pet stays dismissed; only then does full-screen matter —
+        // and only on the display the pet actually sits on.
+        let should_show = wanted
+            && !(hide_when_fullscreen
+                && platform().fullscreen_app_covering(screen_of(&handle, &window)));
         // Only act on a real change. `show()` maps to makeKeyAndOrderFront on
         // macOS, so calling it every tick repeatedly stole key status from
         // whatever was focused — which closed the tray popover a second after

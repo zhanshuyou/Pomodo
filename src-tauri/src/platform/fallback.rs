@@ -1,6 +1,7 @@
 use tauri::WebviewWindow;
 
 use super::PlatformWindows;
+use crate::core::desk::ScreenRect;
 
 /// Linux and Windows get plain always-on-top windows. The pet still floats, drags
 /// and snaps; it just cannot follow spaces or detect a full-screen app.
@@ -22,7 +23,7 @@ impl PlatformWindows for Fallback {
         let _ = window.set_ignore_cursor_events(ignore);
     }
 
-    fn fullscreen_app_frontmost(&self) -> bool {
+    fn fullscreen_app_covering(&self, _screen: ScreenRect) -> bool {
         false
     }
 

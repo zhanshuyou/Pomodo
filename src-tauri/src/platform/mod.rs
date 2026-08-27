@@ -1,5 +1,7 @@
 use tauri::WebviewWindow;
 
+use crate::core::desk::ScreenRect;
+
 #[cfg(not(target_os = "macos"))]
 mod fallback;
 #[cfg(target_os = "macos")]
@@ -14,8 +16,9 @@ pub trait PlatformWindows: Send + Sync {
     fn make_overlay_layer(&self, window: &WebviewWindow);
     /// Let clicks pass straight through the window's transparent regions.
     fn set_click_through(&self, window: &WebviewWindow, ignore: bool);
-    /// True when a full-screen application currently owns the main screen.
-    fn fullscreen_app_frontmost(&self) -> bool;
+    /// True when another application's full-screen window covers `screen`
+    /// (logical points, top-left origin — the same space Tauri monitors use).
+    fn fullscreen_app_covering(&self, screen: ScreenRect) -> bool;
     /// True when some application is capturing audio input — a meeting or a call.
     fn microphone_in_use(&self) -> bool;
 }
