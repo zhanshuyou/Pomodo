@@ -1,9 +1,17 @@
 import { flushSync, mount, unmount } from "svelte";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Reminder } from "../../lib/ipc";
 import { app } from "../../lib/state.svelte";
 import RemindersPane from "./RemindersPane.svelte";
+
+const updateReminder = vi.hoisted(() =>
+  vi.fn(async (_id: number, _patch: import("../../lib/ipc").ReminderPatch) => {}),
+);
+vi.mock("../../lib/ipc", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/ipc")>()),
+  updateReminder,
+}));
 
 /** A stand-in for what Rust's Reminder::seed produces, with spec copy. */
 function seed(
@@ -159,31 +167,79 @@ describe("RemindersPane", () => {
     );
   });
 
-  it("reveals the six rule rows with the spec defaults when disclosed", () => {
+  it("reveals the six rule rows when disclosed", () => {
     (host.querySelector(".disclose") as HTMLButtonElement).click();
     flushSync();
 
-    const names = [...host.querySelectorAll(".rname")].map((e) => e.textContent);
-    const values = [...host.querySelectorAll(".rvalue")].map((e) => e.textContent);
+    const names = [...host.querySelectorAll(".rname")].map(
+      (e) => e.firstChild?.textContent?.trim(),
+    );
     expect(names).toEqual([
       "生效时段",
       "生效日期",
       "专注中",
-      "检测到会议 / 通话",
-      "连续忽略 3 次",
+      "检测到会议 / 通话时静默",
+      "连续忽略",
       "声音",
     ]);
-    expect(values).toEqual([
-      "09:30 – 18:30",
-      "周一 – 周五",
-      "推迟到本轮结束",
-      "静默",
-      "升级为全屏",
-      "木鱼 · 30%",
-    ]);
+    expect(host.querySelector(".rvalue")?.textContent).toBe("木鱼 · 30%");
     expect(host.querySelector(".disclose")?.textContent?.trim()).toContain(
       "收起精细规则",
     );
+  });
+
+  describe("精细规则 editor", () => {
+    beforeEach(() => {
+      updateReminder.mockClear();
+      host.querySelector<HTMLButtonElement>(".disclose")?.click();
+      flushSync();
+    });
+
+    const rulesSent = () => updateReminder.mock.calls.at(-1)![1].rules!;
+
+    it("shows the defaults as editable controls", () => {
+      const times = [...host.querySelectorAll<HTMLInputElement>(".time")].map((e) => e.value);
+      expect(times).toEqual(["09:30", "18:30"]);
+      expect(host.querySelectorAll(".day.on")).toHaveLength(5);
+      expect(host.querySelector(".segbtn.on")?.textContent?.trim()).toBe("推迟到本轮结束");
+      expect(host.querySelector<HTMLInputElement>(".esc")?.value).toBe("3");
+      expect(host.querySelector(".rsub")?.textContent).toBe("周一 – 周五");
+    });
+
+    it("patches the whole rules block when a weekday is toggled", () => {
+      host.querySelector<HTMLButtonElement>('.day[aria-label="周六"]')?.click();
+      flushSync();
+      expect(updateReminder).toHaveBeenCalledTimes(1);
+      expect(updateReminder.mock.calls[0][0]).toBe(0);
+      expect(rulesSent().weekdays).toEqual([true, true, true, true, true, true, false]);
+      expect(rulesSent().duringFocus).toBe("defer");
+    });
+
+    it("sends the new window when a time input changes", () => {
+      const from = host.querySelector<HTMLInputElement>(".time")!;
+      from.value = "08:00";
+      from.dispatchEvent(new Event("change", { bubbles: true }));
+      expect(rulesSent().activeFromMin).toBe(480);
+    });
+
+    it("switches the during-focus behaviour and the meeting toggle", () => {
+      [...host.querySelectorAll<HTMLButtonElement>(".segbtn")]
+        .find((b) => b.textContent?.trim() === "直接打断")
+        ?.click();
+      expect(rulesSent().duringFocus).toBe("interrupt");
+      host.querySelector<HTMLButtonElement>(".rules .switch")?.click();
+      expect(rulesSent().silenceInMeeting).toBe(false);
+    });
+
+    it("clamps the escalation count and explains 0 as never", () => {
+      const num = host.querySelector<HTMLInputElement>(".esc")!;
+      num.value = "42";
+      num.dispatchEvent(new Event("change", { bubbles: true }));
+      expect(rulesSent().escalateAfter).toBe(10);
+      app.model.reminders[0].rules.escalateAfter = 0;
+      flushSync();
+      expect([...host.querySelectorAll(".rsub")].at(-1)?.textContent).toBe("不升级");
+    });
   });
 
   it("shows the tone-aware hint beside the small pet", () => {

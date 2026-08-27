@@ -3,7 +3,9 @@
   import PetCanvas from "../../lib/components/PetCanvas.svelte";
   import Toggle from "../../lib/components/Toggle.svelte";
   import {
+    type FocusBehavior,
     type Intensity,
+    type Rules,
     addReminder,
     deleteReminder,
     toggleReminder,
@@ -11,6 +13,14 @@
   } from "../../lib/ipc";
   import { PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
+  import {
+    WEEKDAY_SHORT,
+    escalationLabel,
+    minutesToTime,
+    timeToMinutes,
+    weekdaysLabel,
+    withWeekday,
+  } from "../../lib/rules";
   import { REMINDER_COLORS } from "../../lib/theme";
 
   const TEMPLATES = [
@@ -59,44 +69,35 @@
     editing?.schedule.kind === "every" ? editing.schedule.minutes : null,
   );
 
-  function minutesLabel(min: number): string {
-    return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+  const FOCUS_MODES: { key: FocusBehavior; label: string }[] = [
+    { key: "defer", label: "推迟到本轮结束" },
+    { key: "silence", label: "静默" },
+    { key: "interrupt", label: "直接打断" },
+  ];
+  const MAX_ESCALATE = 10;
+
+  /** Every rule edit sends the whole block; Rust replaces it wholesale. */
+  function patchRules(rules: Rules) {
+    if (!editing) return;
+    void updateReminder(editing.id, { rules });
   }
 
-  const ruleRows = $derived(
-    editing
-      ? [
-          {
-            name: "生效时段",
-            value: `${minutesLabel(editing.rules.activeFromMin)} – ${minutesLabel(editing.rules.activeToMin)}`,
-          },
-          {
-            name: "生效日期",
-            value: editing.rules.weekdays.slice(0, 5).every(Boolean)
-              ? "周一 – 周五"
-              : "自定义",
-          },
-          {
-            name: "专注中",
-            value:
-              editing.rules.duringFocus === "defer"
-                ? "推迟到本轮结束"
-                : editing.rules.duringFocus === "silence"
-                  ? "静默"
-                  : "直接打断",
-          },
-          {
-            name: "检测到会议 / 通话",
-            value: editing.rules.silenceInMeeting ? "静默" : "照常提醒",
-          },
-          {
-            name: `连续忽略 ${editing.rules.escalateAfter} 次`,
-            value: "升级为全屏",
-          },
-          { name: "声音", value: editing.rules.sound },
-        ]
-      : [],
-  );
+  function onTime(which: "activeFromMin" | "activeToMin", value: string) {
+    if (!editing) return;
+    const min = timeToMinutes(value);
+    if (min === null) return;
+    patchRules({ ...editing.rules, [which]: min });
+  }
+
+  function onEscalate(value: string) {
+    if (!editing) return;
+    const n = Math.round(Number(value));
+    if (!Number.isFinite(n)) return;
+    patchRules({
+      ...editing.rules,
+      escalateAfter: Math.max(0, Math.min(MAX_ESCALATE, n)),
+    });
+  }
 </script>
 
 <div class="col2">
@@ -252,12 +253,95 @@
 
     {#if advanced}
       <div class="rules">
-        {#each ruleRows as row (row.name)}
-          <div class="rrow">
-            <span class="rname">{row.name}</span>
-            <span class="rvalue">{row.value}</span>
-          </div>
-        {/each}
+        <div class="rrow">
+          <span class="rname">生效时段</span>
+          <span class="rctl">
+            <input
+              class="time"
+              type="time"
+              aria-label="生效开始"
+              value={minutesToTime(editing.rules.activeFromMin)}
+              onchange={(e) => onTime("activeFromMin", e.currentTarget.value)}
+            />
+            <span class="dash">–</span>
+            <input
+              class="time"
+              type="time"
+              aria-label="生效结束"
+              value={minutesToTime(editing.rules.activeToMin)}
+              onchange={(e) => onTime("activeToMin", e.currentTarget.value)}
+            />
+          </span>
+        </div>
+
+        <div class="rrow">
+          <span class="rname">
+            生效日期
+            <span class="rsub">{weekdaysLabel(editing.rules.weekdays)}</span>
+          </span>
+          <span class="rctl days">
+            {#each WEEKDAY_SHORT as d, i (d)}
+              <button
+                class="day"
+                class:on={editing.rules.weekdays[i]}
+                type="button"
+                aria-pressed={editing.rules.weekdays[i]}
+                aria-label="周{d}"
+                onclick={() =>
+                  patchRules(withWeekday(editing.rules, i, !editing.rules.weekdays[i]))}
+              >
+                {d}
+              </button>
+            {/each}
+          </span>
+        </div>
+
+        <div class="rrow">
+          <span class="rname">专注中</span>
+          <span class="rctl seg">
+            {#each FOCUS_MODES as mode (mode.key)}
+              <button
+                class="segbtn"
+                class:on={editing.rules.duringFocus === mode.key}
+                type="button"
+                aria-pressed={editing.rules.duringFocus === mode.key}
+                onclick={() => patchRules({ ...editing.rules, duringFocus: mode.key })}
+              >
+                {mode.label}
+              </button>
+            {/each}
+          </span>
+        </div>
+
+        <div class="rrow">
+          <span class="rname">检测到会议 / 通话时静默</span>
+          <Toggle
+            checked={editing.rules.silenceInMeeting}
+            onchange={(v) => patchRules({ ...editing.rules, silenceInMeeting: v })}
+            label="检测到会议 / 通话时静默"
+          />
+        </div>
+
+        <div class="rrow">
+          <span class="rname">
+            连续忽略
+            <span class="rsub">{escalationLabel(editing.rules.escalateAfter)}</span>
+          </span>
+          <input
+            class="esc"
+            type="number"
+            min="0"
+            max={MAX_ESCALATE}
+            aria-label="连续忽略次数"
+            value={editing.rules.escalateAfter}
+            onchange={(e) => onEscalate(e.currentTarget.value)}
+          />
+        </div>
+
+        <div class="rrow">
+          <span class="rname">声音</span>
+          <span class="rvalue">{editing.rules.sound}</span>
+        </div>
       </div>
     {/if}
 
@@ -532,6 +616,52 @@
     background: var(--card);
     font-family: var(--font-mono);
     font-size: 12px;
+  }
+  .rsub {
+    display: block;
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .rctl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .time,
+  .esc {
+    padding: 4px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .esc {
+    width: 56px;
+  }
+  .dash {
+    color: var(--faint);
+  }
+  .day,
+  .segbtn {
+    padding: 4px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--dim);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .day {
+    width: 28px;
+    padding: 4px 0;
+  }
+  .day.on,
+  .segbtn.on {
+    border-color: var(--accent);
+    background: oklch(0.975 0.008 70);
+    color: var(--ink);
   }
   .hintcard {
     margin-top: auto;

@@ -309,6 +309,7 @@ pub fn update_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, patc
         if let Some(rules) = patch.rules {
             r.rules = rules;
         }
+        r.refresh_detail();
     });
     state.emit_changed(&app, Section::Reminders);
     state.flush();

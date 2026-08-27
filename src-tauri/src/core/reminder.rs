@@ -90,7 +90,12 @@ pub struct Reminder {
     pub builtin: Option<Builtin>,
     pub name: String,
     pub color: String,
+    /// The list row's one-liner, e.g. 每 30 分钟 · 轻量气泡 · 计入每日 8 杯.
+    /// Rebuilt by `refresh_detail` after every edit; only `note` is authored.
     pub detail: String,
+    /// The third clause of `detail` — the part that is not derived.
+    #[serde(default)]
+    pub note: String,
     pub message: String,
     pub hint: String,
     /// True once the user has typed their own message; retone() then leaves it alone.
@@ -136,15 +141,42 @@ fn interval_secs(schedule: Schedule) -> u32 {
     }
 }
 
+impl Intensity {
+    pub fn label(self) -> &'static str {
+        match self {
+            Intensity::Bubble => "轻量气泡",
+            Intensity::Pet => "宠物提示",
+            Intensity::Fullscreen => "全屏",
+        }
+    }
+}
+
+impl Schedule {
+    pub fn label(self) -> String {
+        match self {
+            Schedule::Every { minutes } => format!("每 {minutes} 分钟"),
+            Schedule::DailyAt { hour, minute } => format!("每天 {hour:02}:{minute:02}"),
+        }
+    }
+}
+
 impl Reminder {
     pub fn seed(builtin: Builtin, id: u32, tone: Tone) -> Self {
         let schedule = seed_schedule(builtin);
-        Self {
+        // The spec's detail strings are "<schedule> · <intensity> · <note>"; only
+        // the note is copy, the rest is rebuilt from the fields it describes.
+        let note = reminder_copy::detail(builtin)
+            .rsplit(" · ")
+            .next()
+            .unwrap_or_default()
+            .to_string();
+        let mut r = Self {
             id,
             builtin: Some(builtin),
             name: reminder_copy::name(builtin).to_string(),
             color: reminder_copy::color(builtin).to_string(),
-            detail: reminder_copy::detail(builtin).to_string(),
+            detail: String::new(),
+            note,
             message: reminder_copy::message(builtin, tone).to_string(),
             hint: reminder_copy::hint(builtin, tone).to_string(),
             message_edited: false,
@@ -156,16 +188,19 @@ impl Reminder {
             consecutive_ignores: 0,
             deferred: false,
             last_daily_fire: None,
-        }
+        };
+        r.refresh_detail();
+        r
     }
 
     /// A reminder the user created from a template chip or from ＋ 空白.
     pub fn blank(id: u32, name: String, color: String) -> Self {
         let schedule = Schedule::Every { minutes: 45 };
-        Self {
+        let mut r = Self {
             id,
             builtin: None,
-            detail: "每 45 分钟 · 宠物提示 · 工作时段".to_string(),
+            detail: String::new(),
+            note: "工作时段".to_string(),
             name,
             color,
             message: String::new(),
@@ -179,7 +214,18 @@ impl Reminder {
             consecutive_ignores: 0,
             deferred: false,
             last_daily_fire: None,
+        };
+        r.refresh_detail();
+        r
+    }
+
+    /// Rebuild the list row's one-liner from the schedule and intensity.
+    pub fn refresh_detail(&mut self) {
+        let mut parts = vec![self.schedule.label(), self.intensity.label().to_string()];
+        if !self.note.is_empty() {
+            parts.push(self.note.clone());
         }
+        self.detail = parts.join(" · ");
     }
 
     /// Rewrite the copy for a new tone, unless the user has edited it.
@@ -472,6 +518,34 @@ mod tests {
         let mut c = ctx();
         c.deep_work = true;
         assert_eq!(r.tick(60, &c), TickOutcome::Fire(Intensity::Bubble));
+    }
+
+    #[test]
+    fn seeded_details_match_the_spec_strings() {
+        for b in reminder_copy::ALL {
+            let r = Reminder::seed(b, 0, Tone::Playful);
+            assert_eq!(r.detail, reminder_copy::detail(b));
+        }
+    }
+
+    #[test]
+    fn detail_follows_the_schedule_and_intensity_after_an_edit() {
+        let mut r = water();
+        r.schedule = Schedule::Every { minutes: 60 };
+        r.intensity = Intensity::Fullscreen;
+        r.refresh_detail();
+        assert_eq!(r.detail, "每 60 分钟 · 全屏 · 计入每日 8 杯");
+        r.schedule = Schedule::DailyAt { hour: 9, minute: 5 };
+        r.refresh_detail();
+        assert_eq!(r.detail, "每天 09:05 · 全屏 · 计入每日 8 杯");
+    }
+
+    #[test]
+    fn a_reminder_saved_without_a_note_still_loads_and_rebuilds_a_two_part_detail() {
+        let mut r = water();
+        r.note.clear();
+        r.refresh_detail();
+        assert_eq!(r.detail, "每 30 分钟 · 轻量气泡");
     }
 
     #[test]
