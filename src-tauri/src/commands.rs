@@ -432,6 +432,29 @@ pub fn snooze_overlay(state: State<'_, AppState>, app: AppHandle, id: u32, minut
     true
 }
 
+/// 试听 from the settings window.
+#[tauri::command]
+pub fn preview_sound(sound: crate::core::sound::SoundSetting) {
+    crate::audio::play(sound);
+}
+
+/// The 声音 pane sets one tone for every reminder at once; per-reminder
+/// overrides live in the reminder editor's rule row.
+#[tauri::command]
+pub fn set_all_sounds(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    sound: crate::core::sound::SoundSetting,
+) {
+    state.with(|m| {
+        for r in &mut m.reminders {
+            r.rules.sound = sound.clamped();
+        }
+    });
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+}
+
 #[tauri::command]
 pub fn set_deep_work(state: State<'_, AppState>, app: AppHandle, value: bool) {
     state.with(|m| m.deep_work = value);

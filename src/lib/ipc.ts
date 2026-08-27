@@ -220,9 +220,32 @@ export interface Rules {
   duringFocus: FocusBehavior;
   silenceInMeeting: boolean;
   escalateAfter: number;
-  sound: string;
+  sound: SoundSetting;
   mustComplete: boolean;
 }
+
+export type SoundTone = "none" | "woodblock" | "chime" | "beep";
+export interface SoundSetting {
+  tone: SoundTone;
+  /** 0–100 */
+  volume: number;
+}
+export const SOUND_TONES: { key: SoundTone; label: string }[] = [
+  { key: "none", label: "无" },
+  { key: "woodblock", label: "木鱼" },
+  { key: "chime", label: "风铃" },
+  { key: "beep", label: "滴" },
+];
+/** The rule row's text, mirroring SoundSetting::label in Rust. */
+export function soundLabel(s: SoundSetting): string {
+  if (s.tone === "none") return "无";
+  const name = SOUND_TONES.find((t) => t.key === s.tone)?.label ?? s.tone;
+  return `${name} · ${s.volume}%`;
+}
+export const previewSound = (sound: SoundSetting): Promise<void> =>
+  IS_TAURI ? invoke<void>("preview_sound", { sound }) : Promise.resolve();
+export const setAllSounds = (sound: SoundSetting) =>
+  invoke<void>("set_all_sounds", { sound });
 
 export interface Reminder {
   id: number;

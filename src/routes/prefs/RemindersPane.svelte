@@ -6,8 +6,12 @@
     type FocusBehavior,
     type Intensity,
     type Rules,
+    SOUND_TONES,
+    type SoundTone,
     addReminder,
     deleteReminder,
+    previewSound,
+    soundLabel,
     toggleReminder,
     updateReminder,
   } from "../../lib/ipc";
@@ -134,6 +138,20 @@
     const min = timeToMinutes(value);
     if (min === null) return;
     patchRules({ ...editing.rules, [which]: min });
+  }
+
+  function setTone(tone: SoundTone) {
+    if (!editing) return;
+    const sound = { ...editing.rules.sound, tone };
+    patchRules({ ...editing.rules, sound });
+    void previewSound(sound);
+  }
+
+  function setVolume(value: string) {
+    if (!editing) return;
+    const volume = Math.max(0, Math.min(100, Math.round(Number(value))));
+    if (!Number.isFinite(volume)) return;
+    patchRules({ ...editing.rules, sound: { ...editing.rules.sound, volume } });
   }
 
   function onEscalate(value: string) {
@@ -471,8 +489,44 @@
         </div>
 
         <div class="rrow">
-          <span class="rname">声音</span>
-          <span class="rvalue">{editing.rules.sound}</span>
+          <span class="rname">
+            声音
+            <span class="rsub">{soundLabel(editing.rules.sound)}</span>
+          </span>
+          <span class="rctl">
+            {#each SOUND_TONES as t (t.key)}
+              <button
+                class="segbtn"
+                class:on={editing.rules.sound.tone === t.key}
+                type="button"
+                aria-pressed={editing.rules.sound.tone === t.key}
+                onclick={() => setTone(t.key)}
+              >
+                {t.label}
+              </button>
+            {/each}
+            <input
+              class="vol"
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              aria-label="音量"
+              disabled={editing.rules.sound.tone === "none"}
+              value={editing.rules.sound.volume}
+              onchange={(e) => setVolume(e.currentTarget.value)}
+            />
+            <button
+              class="segbtn"
+              type="button"
+              aria-label="试听"
+              title="试听"
+              disabled={editing.rules.sound.tone === "none"}
+              onclick={() => void previewSound(editing.rules.sound)}
+            >
+              ▶
+            </button>
+          </span>
         </div>
       </div>
     {/if}
@@ -741,14 +795,6 @@
     font-size: 12.5px;
     color: oklch(0.42 0.012 60);
   }
-  .rvalue {
-    padding: 5px 10px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--card);
-    font-family: var(--font-mono);
-    font-size: 12px;
-  }
   .duration {
     margin-top: 10px;
     display: flex;
@@ -842,6 +888,10 @@
   }
   .dash {
     color: var(--faint);
+  }
+  .vol {
+    width: 72px;
+    accent-color: var(--accent);
   }
   .day,
   .segbtn {

@@ -1,3 +1,4 @@
+pub mod audio;
 pub mod commands;
 pub mod core;
 pub mod events;
@@ -157,6 +158,8 @@ pub fn run() {
             commands::snooze_reminder,
             commands::snooze_overlay,
             commands::set_deep_work,
+            commands::preview_sound,
+            commands::set_all_sounds,
             commands::open_prefs,
             commands::up_next,
             commands::today_summary,

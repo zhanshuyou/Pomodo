@@ -42,7 +42,7 @@ function seed(
       duringFocus: "defer",
       silenceInMeeting: true,
       escalateAfter: 3,
-      sound: "木鱼 · 30%",
+      sound: { tone: "woodblock", volume: 30 },
       mustComplete: false,
     },
     remainingSecs: 1800,
@@ -184,7 +184,7 @@ describe("RemindersPane", () => {
       "连续忽略",
       "声音",
     ]);
-    expect(host.querySelector(".rvalue")?.textContent).toBe("木鱼 · 30%");
+    expect([...host.querySelectorAll(".rsub")].at(-1)?.textContent).toBe("木鱼 · 30%");
     expect(host.querySelector(".disclose")?.textContent?.trim()).toContain(
       "收起精细规则",
     );
@@ -287,6 +287,17 @@ describe("RemindersPane", () => {
       expect(rulesSent().silenceInMeeting).toBe(false);
     });
 
+    it("changes the tone and volume through the rules patch", () => {
+      [...host.querySelectorAll<HTMLButtonElement>(".segbtn")]
+        .find((b) => b.textContent?.trim() === "风铃")
+        ?.click();
+      expect(rulesSent().sound).toEqual({ tone: "chime", volume: 30 });
+      const vol = host.querySelector<HTMLInputElement>(".vol")!;
+      vol.value = "65";
+      vol.dispatchEvent(new Event("change", { bubbles: true }));
+      expect(rulesSent().sound).toEqual({ tone: "woodblock", volume: 65 });
+    });
+
     it("clamps the escalation count and explains 0 as never", () => {
       const num = host.querySelector<HTMLInputElement>(".esc")!;
       num.value = "42";
@@ -294,7 +305,7 @@ describe("RemindersPane", () => {
       expect(rulesSent().escalateAfter).toBe(10);
       app.model.reminders[0].rules.escalateAfter = 0;
       flushSync();
-      expect([...host.querySelectorAll(".rsub")].at(-1)?.textContent).toBe("不升级");
+      expect([...host.querySelectorAll(".rsub")].map((e) => e.textContent)).toContain("不升级");
     });
   });
 

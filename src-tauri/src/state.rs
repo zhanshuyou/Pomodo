@@ -218,10 +218,16 @@ impl AppState {
 
         let mini = self.with(|m| m.mini_enabled);
 
+        let sounds: Vec<(u32, crate::core::sound::SoundSetting)> =
+            self.with(|m| m.reminders.iter().map(|r| (r.id, r.rules.sound)).collect());
+
         for payload in fires {
             // Every window hears the raw event; the surface that renders it depends
             // on the intensity the engine chose for this particular firing.
             let _ = app.emit(events::REMINDER_FIRE, payload.clone());
+            if let Some((_, sound)) = sounds.iter().find(|(id, _)| *id == payload.id) {
+                crate::audio::play(*sound);
+            }
             match payload.intensity {
                 // In 迷你模式 the bar swells to carry the message itself. You have
                 // already handed the screen over to whatever you are working in —

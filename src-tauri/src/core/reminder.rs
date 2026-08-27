@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::core::reminder_copy::{self, Builtin};
+use crate::core::sound::{deserialize_sound, SoundSetting};
 use crate::model::Tone;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -41,7 +42,9 @@ pub struct Rules {
     pub during_focus: FocusBehavior,
     pub silence_in_meeting: bool,
     pub escalate_after: u8,
-    pub sound: String,
+    /// Accepts the pre-struct `"木鱼 · 30%"` string from older files.
+    #[serde(default, deserialize_with = "deserialize_sound")]
+    pub sound: SoundSetting,
     /// 必须完成 — a fullscreen firing that cannot be escaped or snoozed; the
     /// only way out is 做完了 once the countdown has run down.
     #[serde(default)]
@@ -57,7 +60,7 @@ impl Default for Rules {
             during_focus: FocusBehavior::Defer,
             silence_in_meeting: true,
             escalate_after: 3,
-            sound: "木鱼 · 30%".to_string(),
+            sound: SoundSetting::default(),
             must_complete: false,
         }
     }
@@ -897,7 +900,7 @@ mod tests {
         assert_eq!(r.during_focus, FocusBehavior::Defer);
         assert!(r.silence_in_meeting);
         assert_eq!(r.escalate_after, 3);
-        assert_eq!(r.sound, "木鱼 · 30%");
+        assert_eq!(r.sound.label(), "木鱼 · 30%");
     }
 
     #[test]

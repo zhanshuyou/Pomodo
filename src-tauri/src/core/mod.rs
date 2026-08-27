@@ -2,6 +2,7 @@ pub mod desk;
 pub mod pet;
 pub mod reminder;
 pub mod reminder_copy;
+pub mod sound;
 pub mod stats;
 pub mod task;
 pub mod timer;
