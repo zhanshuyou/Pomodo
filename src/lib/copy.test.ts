@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  emptyTasks,
   miniLabel,
   petLine,
   petVerdict,
@@ -55,6 +56,14 @@ describe("petVerdict", () => {
     expect(petVerdict("professional", empty)).toBe("本周尚无专注记录。");
     const flat = { weekFocusSecs: 3600, weekDeltaPct: 0, interruptionsDelta: 0 };
     expect(petVerdict("gentle", flat)).toBe("这周专注了 1 小时，稳稳的。");
+  });
+});
+
+describe("emptyTasks", () => {
+  it("points at ⌘N in every tone", () => {
+    for (const t of ["professional", "gentle", "playful"] as const) {
+      expect(emptyTasks(t)).toContain("⌘N");
+    }
   });
 });
 

@@ -111,6 +111,16 @@ export function roundsUntilLongBreak(
   );
 }
 
+/** The task sidebar with nothing in it. */
+export function emptyTasks(t: Tone): string {
+  return tone(
+    t,
+    "暂无任务，按 ⌘N 添加。",
+    "还没有要啃的事，⌘N 加一件？",
+    "今天要啃点什么？⌘N 告诉我",
+  );
+}
+
 /** The 稍后 affordance on every reminder surface. */
 export function snoozeLabel(t: Tone, minutes: number): string {
   return tone(

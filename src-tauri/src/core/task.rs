@@ -82,28 +82,6 @@ impl Model {
     pub fn done_count(&self) -> usize {
         self.tasks.iter().filter(|t| t.done).count()
     }
-
-    /// First-run content, copied from the design's task list.
-    pub fn seed_demo_tasks(&mut self) {
-        if !self.tasks.is_empty() {
-            return;
-        }
-        let seeds: [(&str, u8, u8, bool); 5] = [
-            ("写产品需求文档", 3, 3, false),
-            ("回 Sarah 的邮件", 1, 0, false),
-            ("整理用研笔记", 2, 0, false),
-            ("改登录页文案", 1, 1, true),
-            ("周会前更新看板", 1, 1, true),
-        ];
-        for (name, estimate, spent, done) in seeds {
-            let id = self.add_task(name.to_string(), estimate);
-            if let Some(task) = self.tasks.iter_mut().find(|t| t.id == id) {
-                task.spent = spent;
-                task.done = done;
-            }
-        }
-        self.timer.active_task = self.tasks.first().map(|t| t.id);
-    }
 }
 
 #[cfg(test)]
@@ -201,25 +179,5 @@ mod tests {
         m.add_task("b".into(), 1);
         m.toggle_task(a);
         assert_eq!(m.done_count(), 1);
-    }
-
-    #[test]
-    fn seed_demo_tasks_matches_the_design() {
-        let mut m = Model::default();
-        m.seed_demo_tasks();
-        assert_eq!(m.tasks.len(), 5);
-        assert_eq!(m.tasks[0].name, "写产品需求文档");
-        assert_eq!(m.tasks[0].spent, 3);
-        assert_eq!(m.done_count(), 2);
-        assert!(m.tasks[3].done);
-        assert!(m.tasks[4].done);
-    }
-
-    #[test]
-    fn seeding_twice_does_not_duplicate() {
-        let mut m = Model::default();
-        m.seed_demo_tasks();
-        m.seed_demo_tasks();
-        assert_eq!(m.tasks.len(), 5);
     }
 }

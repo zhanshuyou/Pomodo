@@ -75,9 +75,11 @@ impl Store {
     }
 }
 
+/// A first launch: no tasks (the sidebar has an empty state for that), the
+/// four built-in reminders. Demo rows were seeded here once; they read as the
+/// user's own data and, before the list was editable, could not be removed.
 fn fresh() -> Model {
     let mut model = Model::default();
-    model.seed_demo_tasks();
     model.seed_reminders();
     model
 }
@@ -98,7 +100,9 @@ mod tests {
     fn load_seeds_a_fresh_model_when_no_file_exists() {
         let store = Store::new(&temp_dir("fresh"));
         let model = store.load();
-        assert_eq!(model.tasks.len(), 5);
+        assert!(model.tasks.is_empty());
+        assert_eq!(model.timer.active_task, None);
+        assert_eq!(model.reminders.len(), 4);
         assert_eq!(model.settings.focus_secs, 1500);
     }
 
@@ -113,8 +117,8 @@ mod tests {
 
         let back = Store::new(&dir).load();
         assert_eq!(back.timer.remaining_secs, 42);
-        assert_eq!(back.tasks.len(), 6);
-        assert_eq!(back.tasks[5].name, "新任务");
+        assert_eq!(back.tasks.len(), 1);
+        assert_eq!(back.tasks[0].name, "新任务");
     }
 
     #[test]
@@ -138,7 +142,8 @@ mod tests {
     fn a_save_written_before_mini_mode_existed_still_loads() {
         let dir = temp_dir("mini-missing");
         let store = Store::new(&dir);
-        let model = store.load();
+        let mut model = store.load();
+        model.add_task("留下来的".into(), 1);
         store.save(&model).expect("save");
 
         // Strip the two keys the way a state.json from the previous build looks.
@@ -152,7 +157,7 @@ mod tests {
         let back = Store::new(&dir).load();
         assert!(!back.mini_enabled);
         assert_eq!(back.mini_placement, None);
-        assert_eq!(back.tasks.len(), 5); // and it is the real model, not a fresh fallback
+        assert_eq!(back.tasks.len(), 1); // and it is the real model, not a fresh fallback
     }
 
     #[test]
@@ -175,7 +180,8 @@ mod tests {
         .expect("write");
 
         let model = Store::new(&dir).load();
-        assert_eq!(model.tasks.len(), 5); // fell back to a fresh model
+        assert!(model.tasks.is_empty()); // fell back to a fresh model
+        assert_eq!(model.reminders.len(), 4);
         assert!(dir.join("state.json.bak").exists());
         let backup = fs::read_to_string(dir.join("state.json.bak")).expect("read backup");
         assert!(backup.contains("999"));
@@ -186,7 +192,8 @@ mod tests {
         let dir = temp_dir("corrupt");
         fs::write(dir.join("state.json"), "{ not json at all").expect("write");
         let model = Store::new(&dir).load();
-        assert_eq!(model.tasks.len(), 5);
+        assert!(model.tasks.is_empty());
+        assert_eq!(model.reminders.len(), 4);
     }
 
     #[test]

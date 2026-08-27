@@ -11,6 +11,7 @@
 
 <script lang="ts">
   import StatBar from "../../lib/components/StatBar.svelte";
+  import { emptyTasks } from "../../lib/copy";
   import {
     addTask,
     deleteTask,
@@ -151,6 +152,9 @@
   </header>
 
   <div class="list">
+    {#if app.tasks.length === 0 && !adding}
+      <button class="empty" type="button" onclick={beginAdd}>{emptyTasks(app.tone)}</button>
+    {/if}
     {#each app.tasks as task, index (task.id)}
       <div
         class="task"
@@ -460,6 +464,16 @@
   .add-row .add-input {
     flex: 1;
     min-width: 0;
+  }
+  .empty {
+    padding: 18px 13px;
+    border: none;
+    border-radius: var(--radius-control);
+    background: oklch(0.97 0.006 70);
+    color: var(--dim);
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
   }
   .add {
     padding: 10px 13px;

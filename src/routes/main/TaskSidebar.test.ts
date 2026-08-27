@@ -42,6 +42,19 @@ describe("TaskSidebar task management", () => {
 
   const row = (i: number) => host.querySelectorAll<HTMLElement>(".task")[i];
 
+  it("shows a tone-aware empty state that opens the editor", () => {
+    app.model.tasks = [];
+    flushSync();
+    const empty = host.querySelector<HTMLButtonElement>(".empty")!;
+    expect(empty.textContent).toContain("⌘N");
+    empty.click();
+    flushSync();
+    expect(host.querySelector(".add-input")).not.toBeNull();
+    expect(host.querySelector(".empty")).toBeNull();
+    host.querySelector<HTMLInputElement>(".add-input")!.dispatchEvent(key("Escape"));
+    flushSync();
+  });
+
   it("draws one pip per estimated pomodoro, filled up to spent", () => {
     const pips = (i: number) =>
       [...row(i).querySelectorAll(".pip:not(.ghost)")].map((p) => p.classList.contains("on"));

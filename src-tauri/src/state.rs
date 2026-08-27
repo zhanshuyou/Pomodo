@@ -258,22 +258,27 @@ mod tests {
     #[test]
     fn new_loads_the_model_from_the_store() {
         let state = AppState::new(store_in("load"));
-        assert_eq!(state.snapshot().tasks.len(), 5);
+        assert!(state.snapshot().tasks.is_empty());
+        assert_eq!(state.snapshot().reminders.len(), 4);
     }
 
     #[test]
     fn with_mutates_under_the_lock_and_returns_a_value() {
         let state = AppState::new(store_in("with"));
         let id = state.with(|m| m.add_task("新的".into(), 1));
-        assert_eq!(state.snapshot().tasks.len(), 6);
+        assert_eq!(state.snapshot().tasks.len(), 1);
         assert!(state.snapshot().tasks.iter().any(|t| t.id == id));
     }
 
     #[test]
     fn advance_credits_the_active_task_when_a_focus_phase_completes() {
         let state = AppState::new(store_in("credit"));
+        let active = state.with(|m| {
+            let id = m.add_task("写产品需求文档".into(), 3);
+            m.timer.active_task = Some(id);
+            id
+        });
         let before = state.snapshot();
-        let active = before.timer.active_task.expect("seeded active task");
         let spent_before = before
             .tasks
             .iter()
@@ -330,7 +335,7 @@ mod tests {
         })
         .join();
         // Must not panic.
-        assert_eq!(state.snapshot().tasks.len(), 5);
+        assert_eq!(state.snapshot().reminders.len(), 4);
     }
 }
 
