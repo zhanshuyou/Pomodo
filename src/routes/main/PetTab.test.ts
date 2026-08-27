@@ -5,6 +5,18 @@ import { app } from "../../lib/state.svelte";
 import PetTab from "./PetTab.svelte";
 import StatsTab from "./StatsTab.svelte";
 
+const petIpc = vi.hoisted(() => ({
+  importCustomPet: vi.fn(async (_slot: string, _path: string) => "/pets/focus.png"),
+}));
+vi.mock("../../lib/ipc", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/ipc")>()),
+  ...petIpc,
+}));
+
+type PetTabInstance = {
+  receiveDrop: (e: import("../../lib/ipc").FileDropEvent) => void;
+};
+
 /** Both tabs take no props; naming them exactly keeps mount()'s generics happy. */
 function render(Component: typeof PetTab | typeof StatsTab) {
   const host = document.createElement("div");
@@ -135,6 +147,30 @@ describe("PetTab", () => {
     flushSync();
     expect(focusChip.textContent?.trim()).toBe("专注");
     vi.useRealTimers();
+  });
+
+  it("lights the slot up while a file is dragged over and imports a dropped PNG", () => {
+    petIpc.importCustomPet.mockClear();
+    const tab = component as unknown as PetTabInstance;
+    tab.receiveDrop({ type: "enter", paths: ["/tmp/cat.png"] });
+    flushSync();
+    expect(host.querySelector(".slot.dragover")).not.toBeNull();
+    tab.receiveDrop({ type: "drop", paths: ["/tmp/cat.png"] });
+    flushSync();
+    expect(host.querySelector(".slot.dragover")).toBeNull();
+    expect(petIpc.importCustomPet).toHaveBeenCalledWith("focus", "/tmp/cat.png");
+  });
+
+  it("refuses a dropped file of the wrong type with an inline message", () => {
+    petIpc.importCustomPet.mockClear();
+    const tab = component as unknown as PetTabInstance;
+    tab.receiveDrop({ type: "drop", paths: ["/tmp/cat.svg"] });
+    flushSync();
+    expect(petIpc.importCustomPet).not.toHaveBeenCalled();
+    expect(host.querySelector(".error")?.textContent).toContain("svg");
+    tab.receiveDrop({ type: "leave" });
+    flushSync();
+    expect(host.querySelector(".slot.dragover")).toBeNull();
   });
 
   it("renders the four behaviour flags with the first three on", () => {

@@ -195,6 +195,27 @@ export async function pickPetImage(): Promise<string | null> {
   return typeof picked === "string" ? picked : null;
 }
 
+export const PET_IMAGE_EXTENSIONS = ["png", "gif", "apng", "webp"] as const;
+
+export type FileDropEvent =
+  | { type: "enter" | "drop"; paths: string[] }
+  | { type: "over" | "leave" };
+
+/**
+ * OS file drag-and-drop into this window. Tauri delivers it as a webview
+ * event rather than the DOM's dragover/drop, which wry swallows. No-op
+ * outside Tauri, like every other subscription.
+ */
+export async function onFileDrop(cb: (e: FileDropEvent) => void): Promise<UnlistenFn> {
+  if (!IS_TAURI) return () => {};
+  const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+  return getCurrentWebview().onDragDropEvent((event) => {
+    const p = event.payload;
+    if (p.type === "enter" || p.type === "drop") cb({ type: p.type, paths: p.paths });
+    else cb({ type: p.type });
+  });
+}
+
 /** Convert a stored absolute path into something an <img src> can load. */
 import { convertFileSrc } from "@tauri-apps/api/core";
 

@@ -1,12 +1,15 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import Chip from "../../lib/components/Chip.svelte";
   import Pet from "../../lib/components/Pet.svelte";
   import PetCanvas from "../../lib/components/PetCanvas.svelte";
   import {
+    PET_IMAGE_EXTENSIONS,
     type PetFlags,
     type PetSlot,
     clearCustomPet,
     importCustomPet,
+    onFileDrop,
     petImageSrc,
     pickPetImage,
     selectPet,
@@ -43,6 +46,39 @@
   ];
 
   let error = $state("");
+  /** A file is being dragged over the window: light the drop slot up. */
+  let dragOver = $state(false);
+
+  /**
+   * Handle one OS drag-and-drop event. Exported so the test can feed events
+   * directly instead of standing up Tauri's webview listener.
+   */
+  export function receiveDrop(e: import("../../lib/ipc").FileDropEvent): void {
+    if (e.type === "enter" || e.type === "over") {
+      dragOver = true;
+      return;
+    }
+    dragOver = false;
+    if (e.type !== "drop") return;
+    error = "";
+    const [path] = e.paths;
+    if (!path || e.paths.length !== 1) {
+      error = "一次拖一张就好";
+      return;
+    }
+    const ext = path.split(".").pop()?.toLowerCase() ?? "";
+    if (!(PET_IMAGE_EXTENSIONS as readonly string[]).includes(ext)) {
+      error = `不支持的图片格式：${ext || "（无扩展名）"}，请拖入 PNG / GIF / APNG / WebP`;
+      return;
+    }
+    importCustomPet("focus", path).catch((err) => (error = String(err)));
+  }
+
+  onMount(() => {
+    const un = onFileDrop(receiveDrop);
+    return () => void un.then((f) => f());
+  });
+
   /** Clearing needs a second click; window.confirm() is unavailable in WKWebView. */
   let pendingClear = $state<PetSlot | null>(null);
   let pendingTimer: ReturnType<typeof setTimeout> | undefined;
@@ -127,7 +163,7 @@
     </section>
 
     <section class="custom">
-      <div class="slot">
+      <div class="slot" class:dragover={dragOver}>
         {#if app.pet.custom.focus}
           <img src={petImageSrc(app.pet.custom.focus)} alt="自定义宠物（专注）" />
         {:else}
@@ -313,6 +349,14 @@
     height: 100%;
     object-fit: contain;
     image-rendering: pixelated;
+  }
+  .slot.dragover {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .slot.dragover .drop {
+    border-color: var(--accent);
+    color: var(--ink);
   }
   .drop {
     width: 100%;
