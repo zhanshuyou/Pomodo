@@ -67,11 +67,8 @@ describe("PETS", () => {
     ]);
   });
 
-  it("locks only PEEP and BOO by default", () => {
-    expect(PETS.filter((p) => !p.unlockedByDefault).map((p) => p.name)).toEqual([
-      "PEEP",
-      "BOO",
-    ]);
+  it("ships the six pets in the spec's order", () => {
+    expect(PETS.map((p) => p.name)).toEqual(["MOCHI", "PUDDING", "TOFU", "BEAN", "PEEP", "BOO"]);
   });
 
   it("gives every pet a square 16x16 map", () => {

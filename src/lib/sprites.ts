@@ -174,16 +174,15 @@ export interface PetDef {
   name: string;
   map: readonly string[];
   body: string;
-  unlockedByDefault: boolean;
 }
 
 export const PETS: readonly PetDef[] = [
-  { id: 0, name: "MOCHI", map: CAT, body: "oklch(0.84 0.09 80)", unlockedByDefault: true },
-  { id: 1, name: "PUDDING", map: SLIME, body: "oklch(0.82 0.08 195)", unlockedByDefault: true },
-  { id: 2, name: "TOFU", map: FROG, body: "oklch(0.82 0.1 145)", unlockedByDefault: true },
-  { id: 3, name: "BEAN", map: BEAR, body: "oklch(0.72 0.06 55)", unlockedByDefault: true },
-  { id: 4, name: "PEEP", map: BIRD, body: "oklch(0.85 0.11 95)", unlockedByDefault: false },
-  { id: 5, name: "BOO", map: GHOST, body: "oklch(0.9 0.02 280)", unlockedByDefault: false },
+  { id: 0, name: "MOCHI", map: CAT, body: "oklch(0.84 0.09 80)" },
+  { id: 1, name: "PUDDING", map: SLIME, body: "oklch(0.82 0.08 195)" },
+  { id: 2, name: "TOFU", map: FROG, body: "oklch(0.82 0.1 145)" },
+  { id: 3, name: "BEAN", map: BEAR, body: "oklch(0.72 0.06 55)" },
+  { id: 4, name: "PEEP", map: BIRD, body: "oklch(0.85 0.11 95)" },
+  { id: 5, name: "BOO", map: GHOST, body: "oklch(0.9 0.02 280)" },
 ];
 
 /** Body colour used to render a still-locked pet in the picker. */

@@ -37,6 +37,8 @@ impl AppState {
     pub fn new(store: Store) -> Self {
         let mut model = store.load();
         model.seed_reminders();
+        // The derived level fields are never read from disk.
+        model.pet.refresh();
         Self {
             model: Mutex::new(model),
             store,

@@ -44,6 +44,11 @@ const FALLBACK: Model = {
     lifetimePomodoros: 0,
     custom: { focus: null, rest: null, nag: null },
     useCustom: false,
+    level: 1,
+    stage: "幼崽期",
+    toNextLevel: 13,
+    progressPct: 0,
+    unlockAt: [0, 0, 0, 0, 150, 300],
   },
   reminders: [],
   body: {

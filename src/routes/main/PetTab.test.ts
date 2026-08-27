@@ -24,6 +24,11 @@ describe("PetTab", () => {
       lifetimePomodoros: 0,
       custom: { focus: null, rest: null, nag: null },
       useCustom: false,
+      level: 1,
+      stage: "幼崽期",
+      toNextLevel: 13,
+      progressPct: 0,
+      unlockAt: [0, 0, 0, 0, 150, 300],
     };
     ({ host, component } = render(PetTab));
   });
@@ -55,18 +60,29 @@ describe("PetTab", () => {
     for (const card of locked) {
       expect((card as HTMLButtonElement).disabled).toBe(true);
     }
+    expect(locked.map((e) => e.querySelector(".unlock")?.textContent)).toEqual([
+      "0/150",
+      "0/300",
+    ]);
+    expect(locked[0].getAttribute("title")).toBe("专注满 150 个番茄解锁");
   });
 
   it("reproduces the artboard's Lv.7 hero figures", () => {
     void unmount(component);
     host.remove();
-    app.model.pet.lifetimePomodoros = 86; // 6 levels + 8
+    // What Rust derives for 86 lifetime pomodoros (6 levels + 8).
+    app.model.pet = {
+      ...app.model.pet,
+      lifetimePomodoros: 86,
+      level: 7,
+      stage: "好奇期",
+      toNextLevel: 5,
+      progressPct: 62,
+    };
     ({ host, component } = render(PetTab));
 
     expect(host.querySelector(".plevel")?.textContent).toBe("Lv.7 · 好奇期");
-    expect(host.querySelector(".hint")?.textContent?.trim()).toBe(
-      "再专注 5 个番茄升到 Lv.8，解锁「披风」",
-    );
+    expect(host.querySelector(".hint")?.textContent?.trim()).toBe("再专注 5 个番茄升到 Lv.8");
     const width = (host.querySelector(".fill") as HTMLElement).style.width;
     expect(Math.round(parseFloat(width))).toBe(62);
   });

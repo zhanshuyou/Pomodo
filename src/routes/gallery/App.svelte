@@ -7,6 +7,7 @@
   import StatBar from "../../lib/components/StatBar.svelte";
   import TitleBar from "../../lib/components/TitleBar.svelte";
   import Toggle from "../../lib/components/Toggle.svelte";
+  import { app } from "../../lib/state.svelte";
   import { LOCKED_BODY, PETS } from "../../lib/sprites";
   import { ACCENTS, type Accent, type Tone, tone } from "../../lib/theme";
 
@@ -60,7 +61,9 @@
       <button class="petcard" class:sel={picked === pet.id} onclick={() => (picked = pet.id)}>
         <PetCanvas
           map={pet.map}
-          body={pet.unlockedByDefault ? pet.body : LOCKED_BODY}
+          body={app.pet.lifetimePomodoros >= (app.pet.unlockAt[pet.id] ?? Infinity)
+            ? pet.body
+            : LOCKED_BODY}
           scale={4}
           alt={pet.name}
         />

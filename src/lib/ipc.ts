@@ -166,6 +166,12 @@ export interface PetState {
   lifetimePomodoros: number;
   custom: CustomPet;
   useCustom: boolean;
+  /** Derived in Rust from lifetimePomodoros — see core/pet.rs. */
+  level: number;
+  stage: string;
+  toNextLevel: number;
+  progressPct: number;
+  unlockAt: number[];
 }
 
 export type PetSlot = "focus" | "rest" | "nag";

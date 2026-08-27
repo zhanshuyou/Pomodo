@@ -16,20 +16,18 @@
   import { LOCKED_BODY, PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
 
-  const POMODOROS_PER_LEVEL = 13;
-
   const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
-  const level = $derived(Math.floor(app.pet.lifetimePomodoros / POMODOROS_PER_LEVEL) + 1);
-  const progressPct = $derived(
-    ((app.pet.lifetimePomodoros % POMODOROS_PER_LEVEL) / POMODOROS_PER_LEVEL) * 100,
-  );
-  const toNext = $derived(
-    POMODOROS_PER_LEVEL - (app.pet.lifetimePomodoros % POMODOROS_PER_LEVEL),
-  );
+  // Level, stage and the unlock table all come from Rust (core/pet.rs).
+  const unlockAt = (id: number) => app.pet.unlockAt[id] ?? Number.POSITIVE_INFINITY;
+  const unlocked = (id: number) => app.pet.lifetimePomodoros >= unlockAt(id);
 
-  const UNLOCK_AT: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 150, 5: 300 };
-  const unlocked = (id: number) =>
-    app.pet.lifetimePomodoros >= (UNLOCK_AT[id] ?? Number.POSITIVE_INFINITY);
+  let selectError = $state("");
+
+  async function pick(id: number) {
+    selectError = "";
+    const ok = await selectPet(id);
+    if (!ok) selectError = `还没解锁，再攒 ${unlockAt(id) - app.pet.lifetimePomodoros} 个番茄`;
+  }
 
   const FLAGS: { key: keyof PetFlags; name: string }[] = [
     { key: "snapEdges", name: "贴边吸附" },
@@ -87,10 +85,10 @@
     <div class="heroinfo">
       <div class="heroname">
         <span class="pname">{pet.name}</span>
-        <span class="plevel">Lv.{level} · 好奇期</span>
+        <span class="plevel">Lv.{app.pet.level} · {app.pet.stage}</span>
       </div>
-      <div class="track"><div class="fill" style:width="{progressPct}%"></div></div>
-      <span class="hint">再专注 {toNext} 个番茄升到 Lv.{level + 1}，解锁「披风」</span>
+      <div class="track"><div class="fill" style:width="{app.pet.progressPct}%"></div></div>
+      <span class="hint">再专注 {app.pet.toNextLevel} 个番茄升到 Lv.{app.pet.level + 1}</span>
     </div>
   </aside>
 
@@ -109,7 +107,8 @@
             class:locked={!open}
             type="button"
             disabled={!open}
-            onclick={() => void selectPet(p.id)}
+            title={open ? p.name : `专注满 ${unlockAt(p.id)} 个番茄解锁`}
+            onclick={() => void pick(p.id)}
           >
             <PetCanvas
               map={p.map}
@@ -118,9 +117,13 @@
               alt={p.name}
             />
             <span class="petname">{p.name}</span>
+            {#if !open}
+              <span class="unlock">{app.pet.lifetimePomodoros}/{unlockAt(p.id)}</span>
+            {/if}
           </button>
         {/each}
       </div>
+      {#if selectError}<span class="error">{selectError}</span>{/if}
     </section>
 
     <section class="custom">
@@ -342,6 +345,11 @@
   .error {
     font-size: 12px;
     color: oklch(0.55 0.15 25);
+  }
+  .unlock {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--faint);
   }
   .thumb {
     width: 20px;
