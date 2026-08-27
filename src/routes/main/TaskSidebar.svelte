@@ -1,18 +1,51 @@
 <script module lang="ts">
-  import { addTask } from "../../lib/ipc";
+  // Shared by the sidebar's own dashed row and the ⌘N shortcut in App.svelte.
+  // The editor is inline rather than window.prompt(): wry's WKWebView has no
+  // UI delegate for JS prompts, so prompt() silently returns null on macOS.
+  let adding = $state(false);
 
-  // Shared by the sidebar's own button and the ⌘N keyboard shortcut in App.svelte.
-  export async function onAdd() {
-    const name = window.prompt("要啃什么？");
-    if (!name?.trim()) return;
-    await addTask(name.trim(), 1);
+  export function beginAdd() {
+    adding = true;
   }
 </script>
 
 <script lang="ts">
   import StatBar from "../../lib/components/StatBar.svelte";
-  import { setActiveTask, toggleTask } from "../../lib/ipc";
+  import { addTask, setActiveTask, toggleTask } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
+
+  let draft = $state("");
+  let input = $state<HTMLInputElement | null>(null);
+
+  $effect(() => {
+    if (adding) input?.focus();
+  });
+
+  function cancelAdd() {
+    adding = false;
+    draft = "";
+  }
+
+  async function submitAdd() {
+    const name = draft.trim();
+    if (!name) {
+      cancelAdd();
+      return;
+    }
+    adding = false;
+    draft = "";
+    await addTask(name, 1);
+  }
+
+  function onDraftKey(event: KeyboardEvent) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void submitAdd();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      cancelAdd();
+    }
+  }
 
   // Driven by the reminder engine: acknowledging 喝水 / 站立 moves these.
   const bodyStats = $derived([
@@ -89,7 +122,20 @@
     {/each}
   </div>
 
-  <button class="add" type="button" onclick={onAdd}>＋ 加一件事（⌘N）</button>
+  {#if adding}
+    <input
+      class="add-input"
+      bind:this={input}
+      bind:value={draft}
+      type="text"
+      placeholder="要啃什么？回车添加，⎋ 取消"
+      aria-label="新任务名称"
+      onkeydown={onDraftKey}
+      onblur={() => void submitAdd()}
+    />
+  {:else}
+    <button class="add" type="button" onclick={beginAdd}>＋ 加一件事（⌘N）</button>
+  {/if}
 
   <div class="body-stats">
     <span class="label">身体这边的账</span>
@@ -213,6 +259,19 @@
   }
   .add:hover {
     background: oklch(0.97 0.006 70);
+  }
+  .add-input {
+    padding: 10px 13px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-control);
+    background: var(--card);
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    outline: none;
+  }
+  .add-input::placeholder {
+    color: var(--faint);
   }
   .body-stats {
     margin-top: auto;

@@ -6,7 +6,7 @@
   import FocusTab from "./FocusTab.svelte";
   import PetTab from "./PetTab.svelte";
   import StatsTab from "./StatsTab.svelte";
-  import { onAdd } from "./TaskSidebar.svelte";
+  import { beginAdd } from "./TaskSidebar.svelte";
 
   const TEXT_INPUT_TAGS = new Set(["INPUT", "TEXTAREA"]);
 
@@ -37,7 +37,9 @@
       if ((e.metaKey || e.ctrlKey) && !e.altKey && e.code === "KeyN") {
         if (isTextInputFocused()) return;
         e.preventDefault();
-        void onAdd();
+        // The sidebar only exists on the 专注 tab.
+        tab = 0;
+        beginAdd();
       }
     };
     window.addEventListener("keydown", onKey);
