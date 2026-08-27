@@ -95,6 +95,12 @@ export const addTask = (name: string, estimate: number) =>
   invoke<number>("add_task", { name, estimate });
 export const toggleTask = (id: number) => invoke<void>("toggle_task", { id });
 export const deleteTask = (id: number) => invoke<void>("delete_task", { id });
+export const renameTask = (id: number, name: string) =>
+  invoke<void>("rename_task", { id, name });
+export const setTaskEstimate = (id: number, estimate: number) =>
+  invoke<void>("set_task_estimate", { id, estimate });
+export const reorderTasks = (ids: number[]) =>
+  invoke<void>("reorder_tasks", { ids });
 export const setAccent = (accent: Accent) => invoke<void>("set_accent", { accent });
 export const setTone = (tone: Tone) => invoke<void>("set_tone", { tone });
 export const setPetFlag = (flag: keyof PetFlags, value: boolean) =>

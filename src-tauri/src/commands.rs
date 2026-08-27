@@ -74,6 +74,29 @@ pub fn toggle_task(state: State<'_, AppState>, app: AppHandle, id: TaskId) {
 }
 
 #[tauri::command]
+pub fn rename_task(state: State<'_, AppState>, app: AppHandle, id: TaskId, name: String) {
+    if state.with(|m| m.rename_task(id, &name)) {
+        state.emit_changed(&app, Section::Tasks);
+        state.flush();
+    }
+}
+
+#[tauri::command]
+pub fn set_task_estimate(state: State<'_, AppState>, app: AppHandle, id: TaskId, estimate: u8) {
+    if state.with(|m| m.set_task_estimate(id, estimate)) {
+        state.emit_changed(&app, Section::Tasks);
+        state.flush();
+    }
+}
+
+#[tauri::command]
+pub fn reorder_tasks(state: State<'_, AppState>, app: AppHandle, ids: Vec<TaskId>) {
+    state.with(|m| m.reorder_tasks(&ids));
+    state.emit_changed(&app, Section::Tasks);
+    state.flush();
+}
+
+#[tauri::command]
 pub fn delete_task(state: State<'_, AppState>, app: AppHandle, id: TaskId) {
     state.with(|m| m.delete_task(id));
     state.emit_changed(&app, Section::Tasks);

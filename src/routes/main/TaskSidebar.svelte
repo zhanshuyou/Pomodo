@@ -11,11 +11,71 @@
 
 <script lang="ts">
   import StatBar from "../../lib/components/StatBar.svelte";
-  import { addTask, setActiveTask, toggleTask } from "../../lib/ipc";
+  import {
+    addTask,
+    deleteTask,
+    renameTask,
+    reorderTasks,
+    setActiveTask,
+    setTaskEstimate,
+    toggleTask,
+  } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
 
+  /** The artboard draws at most three pips, so that is the ceiling here too. */
+  const MAX_PIPS = 3;
+
   let draft = $state("");
+  let draftEstimate = $state(1);
   let input = $state<HTMLInputElement | null>(null);
+
+  /** The task whose name is being edited in place, if any. */
+  let renamingId = $state<number | null>(null);
+  let renameDraft = $state("");
+  let renameInput = $state<HTMLInputElement | null>(null);
+
+  $effect(() => {
+    if (renamingId !== null) renameInput?.focus();
+  });
+
+  function beginRename(task: { id: number; name: string }) {
+    renamingId = task.id;
+    renameDraft = task.name;
+  }
+
+  function cancelRename() {
+    renamingId = null;
+    renameDraft = "";
+  }
+
+  function submitRename() {
+    if (renamingId === null) return;
+    const id = renamingId;
+    const name = renameDraft.trim();
+    renamingId = null;
+    renameDraft = "";
+    if (name) void renameTask(id, name);
+  }
+
+  function onRenameKey(event: KeyboardEvent) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submitRename();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      cancelRename();
+    }
+  }
+
+  function move(id: number, delta: -1 | 1) {
+    const ids = app.tasks.map((t) => t.id);
+    const from = ids.indexOf(id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, id);
+    void reorderTasks(ids);
+  }
 
   $effect(() => {
     if (adding) input?.focus();
@@ -24,17 +84,18 @@
   function cancelAdd() {
     adding = false;
     draft = "";
+    draftEstimate = 1;
   }
 
   async function submitAdd() {
     const name = draft.trim();
+    const estimate = draftEstimate;
     if (!name) {
       cancelAdd();
       return;
     }
-    adding = false;
-    draft = "";
-    await addTask(name, 1);
+    cancelAdd();
+    await addTask(name, estimate);
   }
 
   function onDraftKey(event: KeyboardEvent) {
@@ -88,7 +149,7 @@
   </header>
 
   <div class="list">
-    {#each app.tasks as task (task.id)}
+    {#each app.tasks as task, index (task.id)}
       <div
         class="task"
         class:selected={app.timer.activeTask === task.id && !task.done}
@@ -111,30 +172,116 @@
         </button>
 
         <div class="text">
-          <span class="name" class:done={task.done}>{task.name}</span>
+          {#if renamingId === task.id}
+            <input
+              class="rename"
+              bind:this={renameInput}
+              bind:value={renameDraft}
+              type="text"
+              aria-label="任务名称"
+              onclick={(e) => e.stopPropagation()}
+              onkeydown={onRenameKey}
+              onblur={submitRename}
+            />
+          {:else}
+            <!-- The row is already the button; the name only adds a double-click. -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <span
+              class="name"
+              class:done={task.done}
+              title="双击改名"
+              ondblclick={(e) => {
+                e.stopPropagation();
+                beginRename(task);
+              }}
+            >
+              {task.name}
+            </span>
+          {/if}
           <span class="meta">{meta(task)}</span>
         </div>
 
-        <div class="pips">
+        <!-- One pip per estimated pomodoro; click a pip to re-estimate. -->
+        <div class="pips" role="group" aria-label="预计番茄数">
           {#each [0, 1, 2] as i (i)}
-            <span class="pip" class:on={i < Math.min(task.spent, 3)}></span>
+            {#if i < Math.min(task.estimate, MAX_PIPS) || i === Math.min(task.estimate, MAX_PIPS)}
+              <button
+                class="pip"
+                class:on={i < Math.min(task.spent, task.estimate)}
+                class:ghost={i >= task.estimate}
+                type="button"
+                aria-label="预计 {i + 1} 个番茄"
+                title="预计 {i + 1} 个番茄"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  void setTaskEstimate(task.id, i + 1);
+                }}
+              ></button>
+            {/if}
           {/each}
+        </div>
+
+        <div class="rowacts">
+          <button
+            class="act"
+            type="button"
+            aria-label="上移"
+            disabled={index === 0}
+            onclick={(e) => {
+              e.stopPropagation();
+              move(task.id, -1);
+            }}>↑</button
+          >
+          <button
+            class="act"
+            type="button"
+            aria-label="下移"
+            disabled={index === app.tasks.length - 1}
+            onclick={(e) => {
+              e.stopPropagation();
+              move(task.id, 1);
+            }}>↓</button
+          >
+          <button
+            class="act del"
+            type="button"
+            aria-label="删除{task.name}"
+            title="删除"
+            onclick={(e) => {
+              e.stopPropagation();
+              void deleteTask(task.id);
+            }}>×</button
+          >
         </div>
       </div>
     {/each}
   </div>
 
   {#if adding}
-    <input
-      class="add-input"
-      bind:this={input}
-      bind:value={draft}
-      type="text"
-      placeholder="要啃什么？回车添加，⎋ 取消"
-      aria-label="新任务名称"
-      onkeydown={onDraftKey}
-      onblur={() => void submitAdd()}
-    />
+    <div class="add-row">
+      <input
+        class="add-input"
+        bind:this={input}
+        bind:value={draft}
+        type="text"
+        placeholder="要啃什么？回车添加，⎋ 取消"
+        aria-label="新任务名称"
+        onkeydown={onDraftKey}
+        onblur={() => void submitAdd()}
+      />
+      <div class="pips" role="group" aria-label="预计番茄数">
+        {#each [1, 2, 3] as n (n)}
+          <button
+            class="pip"
+            class:on={n <= draftEstimate}
+            type="button"
+            aria-label="预计 {n} 个番茄"
+            onpointerdown={(e) => e.preventDefault()}
+            onclick={() => (draftEstimate = n)}
+          ></button>
+        {/each}
+      </div>
+    </div>
   {:else}
     <button class="add" type="button" onclick={beginAdd}>＋ 加一件事（⌘N）</button>
   {/if}
@@ -245,9 +392,72 @@
     width: 7px;
     height: 7px;
     background: var(--track);
+    border: none;
+    padding: 0;
+    cursor: pointer;
   }
   .pip.on {
     background: var(--accent);
+  }
+  /* The next pip up, faint, so there is something to click to raise the estimate. */
+  .pip.ghost {
+    opacity: 0;
+  }
+  .task:hover .pip.ghost {
+    opacity: 0.35;
+  }
+  .rename {
+    padding: 2px 6px;
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    background: var(--card);
+    font: inherit;
+    font-size: 13.5px;
+    color: var(--ink);
+    outline: none;
+    min-width: 0;
+  }
+  .rowacts {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .task:hover .rowacts,
+  .task:focus-within .rowacts {
+    opacity: 1;
+  }
+  .act {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--faint);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
+  .act:hover:not(:disabled) {
+    background: oklch(0.94 0.008 70);
+    color: var(--ink);
+  }
+  .act:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+  .act.del:hover {
+    color: oklch(0.55 0.15 25);
+  }
+  .add-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .add-row .add-input {
+    flex: 1;
+    min-width: 0;
   }
   .add {
     padding: 10px 13px;
