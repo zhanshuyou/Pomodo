@@ -8,6 +8,7 @@ import MiniBar from "./App.svelte";
 const ipcSpies = vi.hoisted(() => ({
   ackReminder: vi.fn(async () => {}),
   ignoreReminder: vi.fn(async () => {}),
+  snoozeReminder: vi.fn(async () => {}),
 }));
 vi.mock("../../lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/ipc")>()),
@@ -153,5 +154,25 @@ describe("mini bar", () => {
     flushSync();
     expect(ipcSpies.ackReminder).toHaveBeenCalledWith(2);
     expect(ipcSpies.ignoreReminder).not.toHaveBeenCalled();
+  });
+
+  it("稍后 snoozes without acknowledging or ignoring", () => {
+    for (const fn of Object.values(ipcSpies)) fn.mockClear();
+    component.receiveNudge({
+      id: 3,
+      name: "喝水",
+      message: "喝口水",
+      intensity: "pet",
+      color: "oklch(0.66 0.09 195)",
+    });
+    flushSync();
+    host.querySelector<HTMLButtonElement>(".nudge-later")?.click();
+    flushSync();
+    vi.advanceTimersByTime(12_000);
+    flushSync();
+    expect(ipcSpies.snoozeReminder).toHaveBeenCalledWith(3);
+    expect(ipcSpies.ackReminder).not.toHaveBeenCalled();
+    expect(ipcSpies.ignoreReminder).not.toHaveBeenCalled();
+    expect(host.querySelector(".nudge")).toBeNull();
   });
 });

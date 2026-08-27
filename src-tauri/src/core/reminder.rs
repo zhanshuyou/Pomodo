@@ -112,7 +112,15 @@ pub struct Reminder {
     /// so it fires once per day — including on the tick that first notices the
     /// machine woke up past the target minute.
     pub last_daily_fire: Option<i32>,
+    /// 稍后 — a one-shot countdown that fires once and then hands back to the
+    /// regular schedule. Independent of `remaining_secs` so it works for
+    /// `DailyAt` too. Runtime-only: a relaunch forgets a pending snooze.
+    #[serde(skip)]
+    pub snooze_secs: Option<u32>,
 }
+
+/// How long 稍后 puts a reminder off.
+pub const SNOOZE_MINUTES: u32 = 10;
 
 fn seed_schedule(b: Builtin) -> Schedule {
     match b {
@@ -188,6 +196,7 @@ impl Reminder {
             consecutive_ignores: 0,
             deferred: false,
             last_daily_fire: None,
+            snooze_secs: None,
         };
         r.refresh_detail();
         r
@@ -214,9 +223,22 @@ impl Reminder {
             consecutive_ignores: 0,
             deferred: false,
             last_daily_fire: None,
+            snooze_secs: None,
         };
         r.refresh_detail();
         r
+    }
+
+    /// 稍后: ring again in `minutes`, regardless of schedule. Not an ignore and
+    /// not an acknowledgement — the escalation streak is left exactly as it was.
+    /// An interval reminder also restarts its regular countdown so the snoozed
+    /// firing is not followed by the scheduled one a minute later.
+    pub fn snooze(&mut self, minutes: u32) {
+        self.snooze_secs = Some(minutes.saturating_mul(60).max(1));
+        self.deferred = false;
+        if let Schedule::Every { .. } = self.schedule {
+            self.remaining_secs = interval_secs(self.schedule);
+        }
     }
 
     /// Change the schedule. `now_minute` / `today` describe the clock at the
@@ -291,6 +313,18 @@ impl Reminder {
     pub fn tick(&mut self, elapsed_secs: u32, ctx: &FireContext) -> TickOutcome {
         if !self.enabled {
             return TickOutcome::Idle;
+        }
+
+        if let Some(left) = self.snooze_secs {
+            let left = left.saturating_sub(elapsed_secs);
+            if left > 0 {
+                self.snooze_secs = Some(left);
+                return TickOutcome::Idle;
+            }
+            self.snooze_secs = None;
+            // Straight to fire: the user asked for this one, so the active
+            // window and focus rules do not get a second say.
+            return self.fire(ctx);
         }
 
         match self.schedule {
@@ -539,6 +573,38 @@ mod tests {
         let mut c = ctx();
         c.deep_work = true;
         assert_eq!(r.tick(60, &c), TickOutcome::Fire(Intensity::Bubble));
+    }
+
+    #[test]
+    fn snooze_rings_once_after_the_delay_and_then_resumes_the_schedule() {
+        let mut r = water();
+        r.tick(1500, &ctx());
+        r.snooze(10);
+        assert_eq!(r.tick(599, &ctx()), TickOutcome::Idle);
+        assert!(matches!(r.tick(1, &ctx()), TickOutcome::Fire(_)));
+        assert_eq!(r.snooze_secs, None);
+        // The regular 30-minute countdown was restarted at snooze time.
+        assert_eq!(r.remaining_secs, 1800);
+    }
+
+    #[test]
+    fn snooze_works_for_a_daily_reminder_too() {
+        let mut r = Reminder::seed(Builtin::Review, 3, Tone::Playful);
+        r.snooze(10);
+        let mut c = ctx();
+        c.minute_of_day = 17 * 60 + 40;
+        c.day_ordinal = 100;
+        assert_eq!(r.tick(599, &c), TickOutcome::Idle);
+        assert!(matches!(r.tick(1, &c), TickOutcome::Fire(_)));
+    }
+
+    #[test]
+    fn snooze_leaves_the_ignore_streak_alone() {
+        let mut r = water();
+        r.ignore();
+        r.ignore();
+        r.snooze(10);
+        assert_eq!(r.consecutive_ignores, 2);
     }
 
     #[test]

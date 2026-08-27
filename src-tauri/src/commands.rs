@@ -400,14 +400,21 @@ pub fn ignore_reminder(state: State<'_, AppState>, app: AppHandle, id: u32) {
 pub fn snooze_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, minutes: u32) {
     state.with(|m| {
         if let Some(r) = m.reminders.iter_mut().find(|r| r.id == id) {
-            r.remaining_secs = minutes.saturating_mul(60).max(1);
-            r.deferred = false;
+            r.snooze(minutes);
         }
         m.end_nag(id);
         m.touch();
     });
     state.emit_changed(&app, Section::Reminders);
     state.flush();
+}
+
+/// 稍后 from the fullscreen tier: close every overlay without acknowledging
+/// (which would count a 喝水 cup) or ignoring (which would feed escalation).
+#[tauri::command]
+pub fn snooze_overlay(state: State<'_, AppState>, app: AppHandle, id: u32, minutes: u32) {
+    crate::windows::dismiss_overlays(&app);
+    snooze_reminder(state, app, id, minutes);
 }
 
 #[tauri::command]

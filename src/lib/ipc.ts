@@ -273,8 +273,12 @@ export const toggleReminder = (id: number) => invoke<void>("toggle_reminder", { 
 export const deleteReminder = (id: number) => invoke<void>("delete_reminder", { id });
 export const ackReminder = (id: number) => invoke<void>("ack_reminder", { id });
 export const ignoreReminder = (id: number) => invoke<void>("ignore_reminder", { id });
-export const snoozeReminder = (id: number, minutes: number) =>
+/** Mirrors core::reminder::SNOOZE_MINUTES. */
+export const SNOOZE_MINUTES = 10;
+export const snoozeReminder = (id: number, minutes: number = SNOOZE_MINUTES) =>
   invoke<void>("snooze_reminder", { id, minutes });
+export const snoozeOverlay = (id: number, minutes: number = SNOOZE_MINUTES) =>
+  invoke<void>("snooze_overlay", { id, minutes });
 export const setDeepWork = (value: boolean) => invoke<void>("set_deep_work", { value });
 export const openPrefs = () => invoke<void>("open_prefs");
 

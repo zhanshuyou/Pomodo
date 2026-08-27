@@ -2,7 +2,14 @@
   import { onMount } from "svelte";
   import Pet from "../../lib/components/Pet.svelte";
   import { mmss } from "../../lib/format";
-  import { type FirePayload, dismissOverlay, onOverlayShow } from "../../lib/ipc";
+  import { snoozeLabel } from "../../lib/copy";
+  import {
+    type FirePayload,
+    SNOOZE_MINUTES,
+    dismissOverlay,
+    onOverlayShow,
+    snoozeOverlay,
+  } from "../../lib/ipc";
   import { PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
 
@@ -55,9 +62,14 @@
   <Pet scale={3} anim="sway" slot="nag" alt={pet.name} />
   <span class="count">{mmss(left)}</span>
   <span class="line">{fire?.message ?? "站起来走走，看点远的东西"}</span>
-  <button class="done" type="button" onclick={() => fire && void dismissOverlay(fire.id, true)}>
-    做完了
-  </button>
+  <div class="acts">
+    <button class="later" type="button" onclick={() => fire && void snoozeOverlay(fire.id)}>
+      {snoozeLabel(app.tone, SNOOZE_MINUTES)}
+    </button>
+    <button class="done" type="button" onclick={() => fire && void dismissOverlay(fire.id, true)}>
+      做完了
+    </button>
+  </div>
   <span class="escape">按 ⎋ 逃跑（它会记着）</span>
 </div>
 
@@ -90,8 +102,26 @@
     font-size: 15px;
     opacity: 0.85;
   }
-  .done {
+  .acts {
     margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .later {
+    padding: 12px 18px;
+    border: 1px solid oklch(0.97 0.004 80 / 0.3);
+    border-radius: 12px;
+    background: transparent;
+    color: oklch(0.97 0.004 80 / 0.85);
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .later:hover {
+    background: oklch(0.97 0.004 80 / 0.1);
+  }
+  .done {
     padding: 12px 28px;
     border: none;
     border-radius: 12px;

@@ -5,9 +5,12 @@
     type FirePayload,
     ackReminder,
     hideBubble,
+    SNOOZE_MINUTES,
     ignoreReminder,
     onBubbleShow,
+    snoozeReminder,
   } from "../../lib/ipc";
+  import { snoozeLabel } from "../../lib/copy";
   import { PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
 
@@ -46,6 +49,17 @@
       <span class="title">{fire.name}</span>
       <span class="body">{fire.message}</span>
     </div>
+    <button
+      class="later"
+      type="button"
+      onclick={() => {
+        clearTimeout(timer);
+        if (fire) void snoozeReminder(fire.id);
+        void hideBubble();
+      }}
+    >
+      {snoozeLabel(app.tone, SNOOZE_MINUTES)}
+    </button>
     <button
       class="ack"
       type="button"
@@ -104,6 +118,21 @@
     padding: 6px 12px;
     cursor: pointer;
     flex: none;
+  }
+  .later {
+    border: none;
+    background: transparent;
+    color: oklch(0.97 0.004 80 / 0.65);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 4px;
+    cursor: pointer;
+    flex: none;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .later:hover {
+    color: oklch(0.97 0.004 80);
   }
   .ack:hover {
     background: oklch(0.97 0.004 80 / 0.14);

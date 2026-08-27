@@ -2,13 +2,16 @@
   import { onMount } from "svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import Pet from "../../lib/components/Pet.svelte";
+  import { snoozeLabel } from "../../lib/copy";
   import { mmss } from "../../lib/format";
   import {
     type FirePayload,
     IS_TAURI,
+    SNOOZE_MINUTES,
     ackReminder,
     ignoreReminder,
     onMiniNudge,
+    snoozeReminder,
     pause,
     setMiniHeight,
     setMiniMode,
@@ -110,6 +113,12 @@
   function answerNudge() {
     if (!nudge) return;
     void ackReminder(nudge.id);
+    collapse();
+  }
+
+  function laterNudge() {
+    if (!nudge) return;
+    void snoozeReminder(nudge.id);
     collapse();
   }
 
@@ -218,10 +227,22 @@
     </div>
 
     {#if nudge}
-      <button class="nudge" type="button" onclick={answerNudge}>
-        <span class="nudge-name">{nudge.name}</span>
-        <span class="nudge-text">{nudge.message}</span>
-      </button>
+      <div class="nudge-row">
+        <button class="nudge" type="button" onclick={answerNudge}>
+          <span class="nudge-name">{nudge.name}</span>
+          <span class="nudge-text">{nudge.message}</span>
+        </button>
+        <button
+          class="nudge-later"
+          type="button"
+          title={snoozeLabel(app.tone, SNOOZE_MINUTES)}
+          aria-label={snoozeLabel(app.tone, SNOOZE_MINUTES)}
+          onpointerdown={(e) => e.stopPropagation()}
+          onclick={laterNudge}
+        >
+          稍后
+        </button>
+      </div>
     {/if}
 
     <div class="track">
@@ -366,8 +387,28 @@
     border-top-width: 4px;
     border-radius: 2px;
   }
-  .nudge {
+  .nudge-row {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
     margin: 0 11px 9px;
+  }
+  .nudge-later {
+    flex: none;
+    padding: 0 10px;
+    border: none;
+    border-radius: 10px;
+    background: oklch(0.98 0.004 80 / 0.06);
+    color: oklch(0.98 0.004 80 / 0.7);
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .nudge-later:hover {
+    background: oklch(0.98 0.004 80 / 0.16);
+  }
+  .nudge {
+    flex: 1;
+    margin: 0;
     padding: 8px 10px;
     border: none;
     border-radius: 10px;

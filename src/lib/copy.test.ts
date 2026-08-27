@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { miniLabel, petLine, petVerdict, phaseLabel, runLabel, tagline } from "./copy";
+import {
+  miniLabel,
+  petLine,
+  petVerdict,
+  phaseLabel,
+  runLabel,
+  snoozeLabel,
+  tagline,
+} from "./copy";
 
 describe("tagline", () => {
   it("matches the spec for every tone", () => {
@@ -45,5 +53,13 @@ describe("button labels", () => {
     expect(runLabel(false)).toBe("开始专注");
     expect(miniLabel(true)).toBe("退出迷你模式");
     expect(miniLabel(false)).toBe("迷你模式");
+  });
+});
+
+describe("snoozeLabel", () => {
+  it("names the delay in every tone", () => {
+    expect(snoozeLabel("professional", 10)).toBe("10 分钟后再提醒");
+    expect(snoozeLabel("gentle", 10)).toBe("过 10 分钟再叫我");
+    expect(snoozeLabel("playful", 10)).toBe("再赖 10 分钟");
   });
 });

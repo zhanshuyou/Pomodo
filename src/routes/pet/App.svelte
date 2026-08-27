@@ -2,14 +2,16 @@
   import { onMount } from "svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import Pet from "../../lib/components/Pet.svelte";
-  import { petLine } from "../../lib/copy";
+  import { petLine, snoozeLabel } from "../../lib/copy";
   import { minutesLeft } from "../../lib/format";
   import {
     type FirePayload,
     ackReminder,
     hidePet,
+    SNOOZE_MINUTES,
     ignoreReminder,
     onPetNudge,
+    snoozeReminder,
     petInteracted,
     setPetPlacement,
     showMain,
@@ -163,6 +165,21 @@
 
   <div class="bubble" class:nudging={!!nudge} class:dozing={anim === "sleep"}>
     {anim === "sleep" && !nudge ? "zzz…" : bubbleText}
+    {#if nudge}
+      <button
+        class="later"
+        type="button"
+        onpointerdown={(e) => e.stopPropagation()}
+        onpointerup={(e) => e.stopPropagation()}
+        onclick={() => {
+          clearTimeout(nudgeTimer);
+          if (nudge) void snoozeReminder(nudge.id);
+          nudge = null;
+        }}
+      >
+        {snoozeLabel(app.tone, SNOOZE_MINUTES)}
+      </button>
+    {/if}
   </div>
 </div>
 
@@ -247,6 +264,21 @@
   }
   .bubble.nudging {
     border: 1.5px solid var(--accent);
+  }
+  .later {
+    display: block;
+    margin-top: 6px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--dim);
+    font-size: 12px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .later:hover {
+    color: var(--accent);
   }
   .bubble.dozing {
     color: var(--dim);

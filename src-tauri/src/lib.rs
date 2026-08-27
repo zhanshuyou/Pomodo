@@ -142,6 +142,7 @@ pub fn run() {
             commands::ack_reminder,
             commands::ignore_reminder,
             commands::snooze_reminder,
+            commands::snooze_overlay,
             commands::set_deep_work,
             commands::open_prefs,
             commands::up_next,

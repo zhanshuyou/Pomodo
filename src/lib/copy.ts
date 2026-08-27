@@ -29,6 +29,16 @@ export function petVerdict(t: Tone): string {
   );
 }
 
+/** The 稍后 affordance on every reminder surface. */
+export function snoozeLabel(t: Tone, minutes: number): string {
+  return tone(
+    t,
+    `${minutes} 分钟后再提醒`,
+    `过 ${minutes} 分钟再叫我`,
+    `再赖 ${minutes} 分钟`,
+  );
+}
+
 export function phaseLabel(phase: Phase): string {
   return phase === "focus" ? "专注中" : "休息中";
 }
