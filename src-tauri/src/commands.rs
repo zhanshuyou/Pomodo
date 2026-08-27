@@ -248,7 +248,9 @@ use crate::core::reminder_copy::Builtin;
 pub struct ReminderPatch {
     pub name: Option<String>,
     pub message: Option<String>,
+    /// Older shorthand for `schedule: Every { minutes }`; `schedule` wins if both are set.
     pub interval_minutes: Option<u32>,
+    pub schedule: Option<Schedule>,
     pub intensity: Option<Intensity>,
     pub enabled: Option<bool>,
     pub rules: Option<Rules>,
@@ -284,6 +286,10 @@ pub fn add_reminder(state: State<'_, AppState>, app: AppHandle, template: Option
 
 #[tauri::command]
 pub fn update_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, patch: ReminderPatch) {
+    use chrono::{Datelike, Timelike};
+    let now = chrono::Local::now();
+    let now_minute = (now.hour() * 60 + now.minute()) as u16;
+    let today = now.date_naive().num_days_from_ce();
     state.with(|m| {
         let Some(r) = m.reminders.iter_mut().find(|r| r.id == id) else {
             return;
@@ -296,9 +302,11 @@ pub fn update_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, patc
             // Once the user writes their own words, a tone change must not overwrite them.
             r.message_edited = true;
         }
-        if let Some(minutes) = patch.interval_minutes {
-            r.schedule = Schedule::Every { minutes };
-            r.remaining_secs = minutes.saturating_mul(60).max(1);
+        let schedule = patch.schedule.or(patch
+            .interval_minutes
+            .map(|minutes| Schedule::Every { minutes }));
+        if let Some(schedule) = schedule {
+            r.set_schedule(schedule, now_minute, today);
         }
         if let Some(intensity) = patch.intensity {
             r.intensity = intensity;

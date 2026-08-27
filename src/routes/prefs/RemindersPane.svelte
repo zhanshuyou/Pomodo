@@ -33,6 +33,8 @@
   ];
 
   const INTERVALS = [20, 30, 45, 60];
+  const MIN_INTERVAL = 5;
+  const MAX_INTERVAL = 480;
 
   const STYLES: { key: Intensity; label: string; hint: string }[] = [
     { key: "bubble", label: "气泡", hint: "角落一闪" },
@@ -68,6 +70,51 @@
   const currentInterval = $derived(
     editing?.schedule.kind === "every" ? editing.schedule.minutes : null,
   );
+  const dailyTime = $derived(
+    editing?.schedule.kind === "dailyAt"
+      ? minutesToTime(editing.schedule.hour * 60 + editing.schedule.minute)
+      : "",
+  );
+  const messageBlank = $derived(!editing?.message.trim());
+
+  function setEvery(minutes: number) {
+    if (!editing) return;
+    const m = Math.round(minutes);
+    if (!Number.isFinite(m)) return;
+    void updateReminder(editing.id, {
+      schedule: {
+        kind: "every",
+        minutes: Math.max(MIN_INTERVAL, Math.min(MAX_INTERVAL, m)),
+      },
+    });
+  }
+
+  function setDaily(value: string) {
+    if (!editing) return;
+    const min = timeToMinutes(value);
+    if (min === null) return;
+    void updateReminder(editing.id, {
+      schedule: { kind: "dailyAt", hour: Math.floor(min / 60), minute: min % 60 },
+    });
+  }
+
+  /** Flipping to 每天定时 keeps the old interval's spirit: default to the review hour. */
+  function switchToDaily() {
+    if (!editing || editing.schedule.kind === "dailyAt") return;
+    setDaily("17:30");
+  }
+
+  function switchToEvery() {
+    if (!editing || editing.schedule.kind === "every") return;
+    setEvery(INTERVALS[2]);
+  }
+
+  function onName(value: string) {
+    if (!editing) return;
+    const name = value.trim();
+    if (!name || name === editing.name) return;
+    void updateReminder(editing.id, { name });
+  }
 
   const FOCUS_MODES: { key: FocusBehavior; label: string }[] = [
     { key: "defer", label: "推迟到本轮结束" },
@@ -203,6 +250,17 @@
     </div>
 
     <div class="field">
+      <span class="flabel">叫什么</span>
+      <input
+        class="name"
+        type="text"
+        aria-label="提醒名称"
+        value={editing.name}
+        onchange={(e) => onName(e.currentTarget.value)}
+      />
+    </div>
+
+    <div class="field">
       <span class="flabel">它会怎么说</span>
       <textarea
         class="message"
@@ -213,20 +271,62 @@
             message: (e.currentTarget as HTMLTextAreaElement).value,
           })}
       ></textarea>
+      {#if messageBlank}
+        <span class="warn">先写一句它会怎么说，否则这条不会响。</span>
+      {/if}
     </div>
 
     <div class="field">
       <span class="flabel">多久一次</span>
-      <div class="chips">
-        {#each INTERVALS as min (min)}
-          <Chip
-            selected={currentInterval === min}
-            onclick={() => void updateReminder(editing.id, { intervalMinutes: min })}
-          >
-            <span class="mono">{min} min</span>
-          </Chip>
-        {/each}
+      <div class="modes">
+        <button
+          class="mode"
+          class:on={editing.schedule.kind === "every"}
+          type="button"
+          aria-pressed={editing.schedule.kind === "every"}
+          onclick={switchToEvery}
+        >
+          每隔
+        </button>
+        <button
+          class="mode"
+          class:on={editing.schedule.kind === "dailyAt"}
+          type="button"
+          aria-pressed={editing.schedule.kind === "dailyAt"}
+          onclick={switchToDaily}
+        >
+          每天定时
+        </button>
       </div>
+      {#if editing.schedule.kind === "every"}
+        <div class="chips">
+          {#each INTERVALS as min (min)}
+            <Chip selected={currentInterval === min} onclick={() => setEvery(min)}>
+              <span class="mono">{min} min</span>
+            </Chip>
+          {/each}
+          <label class="custom-interval">
+            <input
+              class="minutes"
+              type="number"
+              min={MIN_INTERVAL}
+              max={MAX_INTERVAL}
+              aria-label="自定义间隔（分钟）"
+              value={currentInterval ?? ""}
+              onchange={(e) => setEvery(Number(e.currentTarget.value))}
+            />
+            <span class="mono">min</span>
+          </label>
+        </div>
+      {:else}
+        <input
+          class="time daily"
+          type="time"
+          aria-label="每天几点"
+          value={dailyTime}
+          onchange={(e) => setDaily(e.currentTarget.value)}
+        />
+      {/if}
     </div>
 
     <div class="field">
@@ -616,6 +716,58 @@
     background: var(--card);
     font-family: var(--font-mono);
     font-size: 12px;
+  }
+  .name {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .warn {
+    font-size: 12px;
+    color: oklch(0.55 0.15 25);
+  }
+  .modes {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .mode {
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--dim);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .mode.on {
+    border-color: var(--accent);
+    background: oklch(0.975 0.008 70);
+    color: var(--ink);
+  }
+  .custom-interval {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .minutes {
+    width: 58px;
+    padding: 5px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .daily {
+    align-self: flex-start;
   }
   .rsub {
     display: block;

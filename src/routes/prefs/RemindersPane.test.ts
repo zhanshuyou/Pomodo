@@ -188,6 +188,60 @@ describe("RemindersPane", () => {
     );
   });
 
+  describe("name and schedule editor", () => {
+    beforeEach(() => updateReminder.mockClear());
+
+    const patchSent = () => updateReminder.mock.calls.at(-1)![1];
+
+    it("renames through the name field, ignoring blanks and no-ops", () => {
+      const name = host.querySelector<HTMLInputElement>(".name")!;
+      expect(name.value).toBe("站起来动一动");
+      name.value = "  ";
+      name.dispatchEvent(new Event("change", { bubbles: true }));
+      name.value = "站起来动一动";
+      name.dispatchEvent(new Event("change", { bubbles: true }));
+      expect(updateReminder).not.toHaveBeenCalled();
+      name.value = " 起立 ";
+      name.dispatchEvent(new Event("change", { bubbles: true }));
+      expect(patchSent()).toEqual({ name: "起立" });
+    });
+
+    it("sends a schedule for a preset chip and clamps a custom interval", () => {
+      [...host.querySelectorAll<HTMLButtonElement>(".col3 .chip")]
+        .find((c) => c.textContent?.trim() === "20 min")
+        ?.click();
+      expect(patchSent()).toEqual({ schedule: { kind: "every", minutes: 20 } });
+      const custom = host.querySelector<HTMLInputElement>(".minutes")!;
+      custom.value = "900";
+      custom.dispatchEvent(new Event("change", { bubbles: true }));
+      expect(patchSent()).toEqual({ schedule: { kind: "every", minutes: 480 } });
+    });
+
+    it("switches to a daily time and edits it without touching the interval chips", () => {
+      [...host.querySelectorAll<HTMLButtonElement>(".mode")]
+        .find((b) => b.textContent?.trim() === "每天定时")
+        ?.click();
+      expect(patchSent()).toEqual({
+        schedule: { kind: "dailyAt", hour: 17, minute: 30 },
+      });
+      app.model.reminders[0].schedule = { kind: "dailyAt", hour: 17, minute: 30 };
+      flushSync();
+      expect(host.querySelector(".col3 .chip")).toBeNull();
+      const time = host.querySelector<HTMLInputElement>(".daily")!;
+      expect(time.value).toBe("17:30");
+      time.value = "09:05";
+      time.dispatchEvent(new Event("change", { bubbles: true }));
+      expect(patchSent()).toEqual({ schedule: { kind: "dailyAt", hour: 9, minute: 5 } });
+    });
+
+    it("warns when the message is blank", () => {
+      expect(host.querySelector(".warn")).toBeNull();
+      app.model.reminders[0].message = "   ";
+      flushSync();
+      expect(host.querySelector(".warn")?.textContent).toContain("不会响");
+    });
+  });
+
   describe("精细规则 editor", () => {
     beforeEach(() => {
       updateReminder.mockClear();

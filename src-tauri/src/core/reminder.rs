@@ -219,6 +219,23 @@ impl Reminder {
         r
     }
 
+    /// Change the schedule. `now_minute` / `today` describe the clock at the
+    /// moment of the edit: a daily time that has already passed today is marked
+    /// as fired, otherwise the sleep-through rule would ring it the next second.
+    pub fn set_schedule(&mut self, schedule: Schedule, now_minute: u16, today: i32) {
+        self.schedule = schedule;
+        self.deferred = false;
+        match schedule {
+            Schedule::Every { .. } => {
+                self.remaining_secs = interval_secs(schedule);
+            }
+            Schedule::DailyAt { hour, minute } => {
+                let target = hour as u16 * 60 + minute as u16;
+                self.last_daily_fire = (target <= now_minute).then_some(today);
+            }
+        }
+    }
+
     /// Rebuild the list row's one-liner from the schedule and intensity.
     pub fn refresh_detail(&mut self) {
         let mut parts = vec![self.schedule.label(), self.intensity.label().to_string()];
@@ -296,6 +313,10 @@ impl Reminder {
         }
 
         if self.deferred {
+            return TickOutcome::Idle;
+        }
+        // A blank reminder with nothing to say has nothing to show either.
+        if self.message.trim().is_empty() {
             return TickOutcome::Idle;
         }
         if !self.is_active_now(ctx) {
@@ -518,6 +539,58 @@ mod tests {
         let mut c = ctx();
         c.deep_work = true;
         assert_eq!(r.tick(60, &c), TickOutcome::Fire(Intensity::Bubble));
+    }
+
+    #[test]
+    fn switching_to_an_interval_restarts_the_countdown() {
+        let mut r = Reminder::seed(Builtin::Review, 3, Tone::Playful);
+        r.set_schedule(Schedule::Every { minutes: 10 }, 14 * 60, 100);
+        assert_eq!(r.remaining_secs, 600);
+        assert_eq!(r.tick(599, &ctx()), TickOutcome::Idle);
+        assert!(matches!(r.tick(1, &ctx()), TickOutcome::Fire(_)));
+    }
+
+    #[test]
+    fn a_daily_time_still_ahead_today_fires_when_the_clock_reaches_it() {
+        let mut r = water();
+        r.set_schedule(
+            Schedule::DailyAt {
+                hour: 15,
+                minute: 0,
+            },
+            14 * 60,
+            100,
+        );
+        assert_eq!(r.tick(1, &ctx()), TickOutcome::Idle);
+        let mut c = ctx();
+        c.minute_of_day = 15 * 60;
+        assert!(matches!(r.tick(1, &c), TickOutcome::Fire(_)));
+    }
+
+    #[test]
+    fn a_daily_time_already_past_today_waits_for_tomorrow() {
+        let mut r = water();
+        r.set_schedule(
+            Schedule::DailyAt {
+                hour: 13,
+                minute: 0,
+            },
+            14 * 60,
+            100,
+        );
+        // Same day, clock past the target: must not ring on the next tick.
+        assert_eq!(r.tick(1, &ctx()), TickOutcome::Idle);
+        let mut c = ctx();
+        c.day_ordinal = 101;
+        assert!(matches!(r.tick(1, &c), TickOutcome::Fire(_)));
+    }
+
+    #[test]
+    fn a_reminder_with_an_empty_message_never_fires() {
+        let mut r = Reminder::blank(9, "新提醒".into(), "oklch(0.63 0.13 40)".into());
+        assert_eq!(r.tick(45 * 60, &ctx()), TickOutcome::Idle);
+        r.message = "起来".into();
+        assert!(matches!(r.tick(45 * 60, &ctx()), TickOutcome::Fire(_)));
     }
 
     #[test]

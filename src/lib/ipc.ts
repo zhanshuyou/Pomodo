@@ -251,7 +251,9 @@ export interface FirePayload {
 export interface ReminderPatch {
   name?: string;
   message?: string;
+  /** Shorthand for `schedule: { kind: "every", minutes }`. */
   intervalMinutes?: number;
+  schedule?: Schedule;
   intensity?: Intensity;
   enabled?: boolean;
   rules?: Rules;
