@@ -171,8 +171,10 @@ impl AppState {
             let mut ids: Vec<(u32, crate::core::reminder::Intensity)> = Vec::new();
 
             for reminder in &mut m.reminders {
-                if round_ended && reminder.release_deferred() {
-                    ids.push((reminder.id, reminder.intensity));
+                if round_ended {
+                    if let Some(intensity) = reminder.release_deferred(&ctx) {
+                        ids.push((reminder.id, intensity));
+                    }
                 }
                 match reminder.tick(elapsed_secs, &ctx) {
                     TickOutcome::Fire(intensity) => ids.push((reminder.id, intensity)),

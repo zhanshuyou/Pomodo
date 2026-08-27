@@ -324,14 +324,23 @@ impl Reminder {
     /// Deep work flattens everything to a bubble ("深度工作时全部自动降到最轻那档").
     /// Otherwise, a run of ignores promotes one firing to fullscreen and then resets.
     fn fire(&mut self, ctx: &FireContext) -> TickOutcome {
+        TickOutcome::Fire(self.effective_intensity(ctx))
+    }
+
+    /// Resolve deep-work demotion and ignore escalation for one firing. Every
+    /// path that turns into a window goes through here — the scheduled tick
+    /// and the release of a firing deferred to round end alike.
+    fn effective_intensity(&mut self, ctx: &FireContext) -> Intensity {
         if ctx.deep_work {
-            return TickOutcome::Fire(Intensity::Bubble);
+            return Intensity::Bubble;
         }
-        if self.consecutive_ignores >= self.rules.escalate_after {
+        // escalate_after == 0 means "never", not "after zero ignores".
+        let after = self.rules.escalate_after;
+        if after > 0 && self.consecutive_ignores >= after {
             self.consecutive_ignores = 0;
-            return TickOutcome::Fire(Intensity::Fullscreen);
+            return Intensity::Fullscreen;
         }
-        TickOutcome::Fire(self.intensity)
+        self.intensity
     }
 
     /// Advance this reminder by `elapsed_secs` of real time.
@@ -402,14 +411,15 @@ impl Reminder {
         self.fire(ctx)
     }
 
-    /// Called at the end of a focus round. Returns true if this reminder had something
-    /// waiting, in which case the caller should fire it now.
-    pub fn release_deferred(&mut self) -> bool {
+    /// Called at the end of a focus round. If this reminder had something
+    /// waiting, returns the intensity to fire it at now — resolved through the
+    /// same rules as a scheduled firing, so deep work and escalation apply.
+    pub fn release_deferred(&mut self, ctx: &FireContext) -> Option<Intensity> {
         if !self.deferred {
-            return false;
+            return None;
         }
         self.deferred = false;
-        true
+        Some(self.effective_intensity(ctx))
     }
 
     pub fn acknowledge(&mut self) {
@@ -562,9 +572,45 @@ mod tests {
         let mut c = ctx();
         c.in_focus = true;
         r.tick(1800, &c);
-        assert!(r.release_deferred());
+        assert_eq!(r.release_deferred(&ctx()), Some(Intensity::Bubble));
         assert!(!r.deferred);
-        assert!(!r.release_deferred()); // only once
+        assert_eq!(r.release_deferred(&ctx()), None); // only once
+    }
+
+    #[test]
+    fn a_deferred_release_is_demoted_by_deep_work() {
+        let mut r = Reminder::seed(Builtin::Stand, 0, Tone::Playful);
+        let mut c = ctx();
+        c.in_focus = true;
+        r.tick(45 * 60, &c);
+        assert!(r.deferred);
+        let mut release = ctx();
+        release.deep_work = true;
+        assert_eq!(r.release_deferred(&release), Some(Intensity::Bubble));
+    }
+
+    #[test]
+    fn a_deferred_release_is_promoted_by_the_ignore_streak_and_resets_it() {
+        let mut r = Reminder::seed(Builtin::Stand, 0, Tone::Playful);
+        for _ in 0..3 {
+            r.ignore();
+        }
+        let mut c = ctx();
+        c.in_focus = true;
+        r.tick(45 * 60, &c);
+        assert_eq!(r.release_deferred(&ctx()), Some(Intensity::Fullscreen));
+        assert_eq!(r.consecutive_ignores, 0);
+    }
+
+    #[test]
+    fn escalate_after_zero_means_never() {
+        let mut r = water();
+        r.rules.escalate_after = 0;
+        for _ in 0..5 {
+            r.ignore();
+        }
+        assert_eq!(r.tick(1800, &ctx()), TickOutcome::Fire(Intensity::Bubble));
+        assert_eq!(r.consecutive_ignores, 5);
     }
 
     #[test]
