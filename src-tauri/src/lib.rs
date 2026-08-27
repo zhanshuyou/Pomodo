@@ -48,6 +48,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_positioner::init())
+        // 开机自动启动 — a LaunchAgent, not a Login Item, so no extra
+        // entitlement; the app comes up into the menu bar like any launch.
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             let dir = app
                 .path()

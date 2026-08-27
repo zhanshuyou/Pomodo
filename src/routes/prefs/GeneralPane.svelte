@@ -1,9 +1,33 @@
 <script lang="ts">
   import Chip from "../../lib/components/Chip.svelte";
   import Toggle from "../../lib/components/Toggle.svelte";
-  import { setAccent, setDeepWork, setTone } from "../../lib/ipc";
+  import { onMount } from "svelte";
+  import {
+    autostartEnabled,
+    setAccent,
+    setAutostart,
+    setDeepWork,
+    setTone,
+  } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
   import { ACCENTS, type Accent, type Tone } from "../../lib/theme";
+
+  let autostart = $state(false);
+  let autostartError = $state("");
+
+  onMount(() => {
+    void autostartEnabled().then((v) => (autostart = v));
+  });
+
+  async function toggleAutostart(value: boolean) {
+    autostartError = "";
+    try {
+      await setAutostart(value);
+      autostart = await autostartEnabled();
+    } catch (e) {
+      autostartError = String(e);
+    }
+  }
 
   const TONES: { key: Tone; label: string }[] = [
     { key: "professional", label: "克制专业" },
@@ -38,6 +62,15 @@
       {/each}
     </div>
     <p class="note">改口气会重写所有没被你编辑过的提醒文案。</p>
+  </section>
+
+  <section>
+    <h3>启动</h3>
+    <div class="row">
+      <span>开机自动启动</span>
+      <Toggle checked={autostart} onchange={(v) => void toggleAutostart(v)} label="开机自动启动" />
+    </div>
+    {#if autostartError}<p class="note error">{autostartError}</p>{/if}
   </section>
 
   <section>
@@ -79,5 +112,8 @@
     margin: 8px 0 0;
     font-size: 12px;
     color: var(--dim);
+  }
+  .error {
+    color: oklch(0.55 0.15 25);
   }
 </style>

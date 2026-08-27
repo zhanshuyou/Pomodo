@@ -360,6 +360,20 @@ export const setPetHitRects = (rects: HitRect[]): Promise<void> =>
   IS_TAURI ? invoke<void>("set_pet_hit_rects", { rects }) : Promise.resolve();
 export const setPetDragging = (dragging: boolean): Promise<void> =>
   IS_TAURI ? invoke<void>("set_pet_dragging", { dragging }) : Promise.resolve();
+/**
+ * 开机自动启动 lives in the OS (a LaunchAgent), not in state.json, so it is
+ * read back from the plugin rather than mirrored in Settings.
+ */
+export async function autostartEnabled(): Promise<boolean> {
+  if (!IS_TAURI) return false;
+  const { isEnabled } = await import("@tauri-apps/plugin-autostart");
+  return isEnabled();
+}
+export async function setAutostart(value: boolean): Promise<void> {
+  if (!IS_TAURI) return;
+  const { enable, disable } = await import("@tauri-apps/plugin-autostart");
+  await (value ? enable() : disable());
+}
 /** The user poked the pet — wakes it from 睡眠动画. */
 export const petInteracted = () => invoke<void>("pet_interacted");
 export const onMiniNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
