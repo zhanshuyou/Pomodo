@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import PetCanvas from "../../lib/components/PetCanvas.svelte";
+  import Pet from "../../lib/components/Pet.svelte";
   import { mmss } from "../../lib/format";
   import { type FirePayload, dismissOverlay, onOverlayShow } from "../../lib/ipc";
   import { PETS } from "../../lib/sprites";
@@ -52,7 +52,7 @@
 </script>
 
 <div class="mask">
-  <PetCanvas map={pet.map} body={pet.body} scale={3} anim="sway" alt={pet.name} />
+  <Pet scale={3} anim="sway" slot="nag" alt={pet.name} />
   <span class="count">{mmss(left)}</span>
   <span class="line">{fire?.message ?? "站起来走走，看点远的东西"}</span>
   <button class="done" type="button" onclick={() => fire && void dismissOverlay(fire.id, true)}>

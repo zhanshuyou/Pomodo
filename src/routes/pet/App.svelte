@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import PetCanvas from "../../lib/components/PetCanvas.svelte";
+  import Pet from "../../lib/components/Pet.svelte";
   import { petLine } from "../../lib/copy";
   import { minutesLeft } from "../../lib/format";
   import {
@@ -138,13 +138,7 @@
     onkeydown={onKey}
   >
     <div class="pet" class:dragging>
-      <PetCanvas
-        map={pet.map}
-        body={pet.body}
-        scale={8}
-        {anim}
-        alt={pet.name}
-      />
+      <Pet scale={8} {anim} alt={pet.name} />
       <div class="shadow"></div>
     </div>
 

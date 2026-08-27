@@ -1,8 +1,17 @@
 <script lang="ts">
   import Chip from "../../lib/components/Chip.svelte";
   import Toggle from "../../lib/components/Toggle.svelte";
-  import { type PetFlags, setPetFlag, setPetVisible } from "../../lib/ipc";
+  import {
+    type PetFlags,
+    setPetFlag,
+    setPetVisible,
+    setUseCustomPet,
+  } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
+
+  const hasCustom = $derived(
+    !!(app.pet.custom.focus || app.pet.custom.rest || app.pet.custom.nag),
+  );
 
   const FLAGS: { key: keyof PetFlags; name: string }[] = [
     { key: "snapEdges", name: "贴边吸附" },
@@ -35,6 +44,16 @@
       </Chip>
     {/each}
   </div>
+  {#if hasCustom}
+    <div class="row">
+      <span>用自己导入的形象</span>
+      <Toggle
+        checked={app.pet.useCustom}
+        onchange={(v) => void setUseCustomPet(v)}
+        label="用自己导入的形象"
+      />
+    </div>
+  {/if}
   <p class="note">宠物形象与自定义图片请在主窗口的「宠物」标签页设置。</p>
 </div>
 

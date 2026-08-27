@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import PetCanvas from "../../lib/components/PetCanvas.svelte";
+  import Pet from "../../lib/components/Pet.svelte";
   import { phaseLabel, runLabel } from "../../lib/copy";
   import { mmss } from "../../lib/format";
   import {
@@ -66,7 +66,7 @@
     >
       <div class="disc"></div>
       <div class="petslot">
-        <PetCanvas map={pet.map} body={pet.body} scale={3} alt={pet.name} />
+        <Pet scale={3} alt={pet.name} />
       </div>
     </div>
 

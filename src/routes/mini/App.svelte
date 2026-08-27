@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import PetCanvas from "../../lib/components/PetCanvas.svelte";
+  import Pet from "../../lib/components/Pet.svelte";
   import { mmss } from "../../lib/format";
   import {
     type FirePayload,
@@ -164,13 +164,7 @@
   >
     <div class="row">
       <div class="sprite">
-        <PetCanvas
-          map={pet.map}
-          body={pet.body}
-          scale={2}
-          anim={app.petMood === "sleeping" ? "sleep" : "none"}
-          alt={pet.name}
-        />
+        <Pet scale={2} anim={app.petMood === "sleeping" ? "sleep" : "none"} alt={pet.name} />
       </div>
 
       <div class="text">

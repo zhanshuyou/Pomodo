@@ -1,15 +1,17 @@
 <script lang="ts">
   import Chip from "../../lib/components/Chip.svelte";
+  import Pet from "../../lib/components/Pet.svelte";
   import PetCanvas from "../../lib/components/PetCanvas.svelte";
   import {
     type PetFlags,
     type PetSlot,
     clearCustomPet,
-    convertFileSrc,
     importCustomPet,
+    petImageSrc,
     pickPetImage,
     selectPet,
     setPetFlag,
+    setUseCustomPet,
   } from "../../lib/ipc";
   import { LOCKED_BODY, PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
@@ -43,6 +45,13 @@
   ];
 
   let error = $state("");
+  /** Clearing needs a second click; window.confirm() is unavailable in WKWebView. */
+  let pendingClear = $state<PetSlot | null>(null);
+  let pendingTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const hasCustom = $derived(
+    !!(app.pet.custom.focus || app.pet.custom.rest || app.pet.custom.nag),
+  );
 
   async function importSlot(slot: PetSlot) {
     error = "";
@@ -54,11 +63,27 @@
       error = String(e);
     }
   }
+
+  function onSlotChip(slot: PetSlot) {
+    clearTimeout(pendingTimer);
+    if (!app.pet.custom[slot]) {
+      pendingClear = null;
+      void importSlot(slot);
+      return;
+    }
+    if (pendingClear === slot) {
+      pendingClear = null;
+      void clearCustomPet(slot);
+      return;
+    }
+    pendingClear = slot;
+    pendingTimer = setTimeout(() => (pendingClear = null), 3000);
+  }
 </script>
 
 <div class="pettab">
   <aside class="hero">
-    <PetCanvas map={pet.map} body={pet.body} scale={9} anim="bob" alt={pet.name} />
+    <Pet scale={9} anim="bob" slot="focus" alt={pet.name} />
     <div class="heroinfo">
       <div class="heroname">
         <span class="pname">{pet.name}</span>
@@ -101,7 +126,7 @@
     <section class="custom">
       <div class="slot">
         {#if app.pet.custom.focus}
-          <img src={convertFileSrc(app.pet.custom.focus)} alt="自定义宠物" />
+          <img src={petImageSrc(app.pet.custom.focus)} alt="自定义宠物（专注）" />
         {:else}
           <button class="drop" type="button" onclick={() => void importSlot("focus")}>
             拖入你的宠物 PNG / GIF
@@ -117,16 +142,23 @@
         </span>
         <div class="chiprow">
           {#each SLOTS as slot (slot.key)}
-            <Chip
-              selected={!!app.pet.custom[slot.key]}
-              onclick={() =>
-                app.pet.custom[slot.key]
-                  ? void clearCustomPet(slot.key)
-                  : void importSlot(slot.key)}
-            >
-              {slot.label}
+            {@const path = app.pet.custom[slot.key]}
+            <Chip selected={!!path} onclick={() => onSlotChip(slot.key)}>
+              {#if path}
+                <img class="thumb" src={petImageSrc(path)} alt="" />
+              {/if}
+              {pendingClear === slot.key ? `再点一次清除「${slot.label}」` : slot.label}
             </Chip>
           {/each}
+          {#if hasCustom}
+            <Chip
+              selected={app.pet.useCustom}
+              dot={app.pet.useCustom ? "var(--accent)" : "oklch(0.85 0.008 70)"}
+              onclick={() => void setUseCustomPet(!app.pet.useCustom)}
+            >
+              用自己的形象
+            </Chip>
+          {/if}
         </div>
         {#if error}<span class="error">{error}</span>{/if}
       </div>
@@ -310,5 +342,11 @@
   .error {
     font-size: 12px;
     color: oklch(0.55 0.15 25);
+  }
+  .thumb {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    image-rendering: pixelated;
   }
 </style>

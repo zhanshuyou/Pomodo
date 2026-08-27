@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import PetCanvas from "../../lib/components/PetCanvas.svelte";
+  import Pet from "../../lib/components/Pet.svelte";
   import { type FirePayload, ackReminder, hideBubble, onBubbleShow } from "../../lib/ipc";
   import { PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
@@ -30,7 +30,7 @@
 
 {#if fire}
   <div class="toast">
-    <PetCanvas map={pet.map} body={pet.body} scale={3} alt={pet.name} />
+    <Pet scale={3} slot="nag" alt={pet.name} />
     <div class="text">
       <span class="title">{fire.name}</span>
       <span class="body">{fire.message}</span>

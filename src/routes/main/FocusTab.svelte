@@ -1,5 +1,5 @@
 <script lang="ts">
-  import PetCanvas from "../../lib/components/PetCanvas.svelte";
+  import Pet from "../../lib/components/Pet.svelte";
   import PixelButton from "../../lib/components/PixelButton.svelte";
   import SpeechBubble from "../../lib/components/SpeechBubble.svelte";
   import { miniLabel, petLine, phaseLabel, runLabel } from "../../lib/copy";
@@ -31,7 +31,7 @@
 
     <div class="petwrap">
       <div class="ring"></div>
-      <PetCanvas map={pet.map} body={pet.body} scale={8} anim="bob" alt={pet.name} />
+      <Pet scale={8} anim="bob" alt={pet.name} />
       <div class="shadow"></div>
       <div class="belly">
         {#each Array.from({ length: 10 }, (_, i) => i) as i (i)}

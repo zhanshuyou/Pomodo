@@ -1,5 +1,5 @@
 import { flushSync, mount, unmount } from "svelte";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "../../lib/state.svelte";
 import PetTab from "./PetTab.svelte";
@@ -87,6 +87,38 @@ describe("PetTab", () => {
     expect(chips).toEqual(
       expect.arrayContaining(["专注", "休息", "催你站起来"]),
     );
+  });
+
+  it("shows thumbnails for imported slots and a use-custom chip", () => {
+    void unmount(component);
+    host.remove();
+    app.model.pet.custom = { focus: "/pets/focus.png", rest: null, nag: "/pets/nag.gif" };
+    app.model.pet.useCustom = true;
+    ({ host, component } = render(PetTab));
+    expect(host.querySelectorAll(".chip .thumb")).toHaveLength(2);
+    expect(host.querySelector(".slot img")?.getAttribute("src")).toBe("/pets/focus.png");
+    const chips = [...host.querySelectorAll(".chip")].map((e) => e.textContent?.trim());
+    expect(chips).toContain("用自己的形象");
+  });
+
+  it("asks for a second click before clearing an imported slot", () => {
+    vi.useFakeTimers();
+    void unmount(component);
+    host.remove();
+    app.model.pet.custom = { focus: "/pets/focus.png", rest: null, nag: null };
+    app.model.pet.useCustom = true;
+    ({ host, component } = render(PetTab));
+    const focusChip = [...host.querySelectorAll<HTMLButtonElement>(".chip")].find(
+      (e) => e.textContent?.trim() === "专注",
+    )!;
+    focusChip.click();
+    flushSync();
+    expect(focusChip.textContent?.trim()).toBe("再点一次清除「专注」");
+    // Walking away resets the confirmation.
+    vi.advanceTimersByTime(3000);
+    flushSync();
+    expect(focusChip.textContent?.trim()).toBe("专注");
+    vi.useRealTimers();
   });
 
   it("renders the four behaviour flags with the first three on", () => {

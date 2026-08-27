@@ -184,7 +184,15 @@ export async function pickPetImage(): Promise<string | null> {
 }
 
 /** Convert a stored absolute path into something an <img src> can load. */
-export { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
+
+/**
+ * asset:// URL for a file in the pets directory. Outside Tauri there is no
+ * asset protocol (and convertFileSrc throws), so the raw path is handed back
+ * and jsdom / gallery.html get a plain broken <img>.
+ */
+export const petImageSrc = (path: string): string =>
+  IS_TAURI ? convertFileSrc(path) : path;
 
 export type Intensity = "bubble" | "pet" | "fullscreen";
 export type FocusBehavior = "defer" | "silence" | "interrupt";
