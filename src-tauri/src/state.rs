@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
 use crate::core::reminder::{Intensity, TickOutcome};
-use crate::events::{self, ChangedPayload, FirePayload, Section, TickPayload};
+use crate::events::{self, ChangedPayload, FirePayload, PetStatePayload, Section, TickPayload};
 use crate::model::{Model, Phase};
 use crate::store::Store;
 
@@ -65,6 +65,17 @@ impl AppState {
                 section: section.as_str(),
             },
         );
+        // Nearly every command that changes the model can change the mood too
+        // (start, pause, ack, the 睡眠动画 flag…), so this is the one choke point.
+        self.sync_mood(app);
+    }
+
+    /// Emit `pet:state` if the mood moved. Cheap enough to call on every change.
+    pub fn sync_mood(&self, app: &AppHandle) {
+        let (changed, state) = self.with(|m| (m.sync_mood(), m.pet_mood));
+        if changed {
+            let _ = app.emit(events::PET_STATE, PetStatePayload { state });
+        }
     }
 
     fn tick_payload(&self) -> TickPayload {
@@ -91,6 +102,7 @@ impl AppState {
     pub fn tick(&self, app: &AppHandle, elapsed_secs: u32) {
         let changes = self.with(|m| {
             let settings = m.settings.clone();
+            m.advance_presence(elapsed_secs);
             let changes = m.timer.advance(elapsed_secs, &settings);
             for change in &changes {
                 if change.from == Phase::Focus {
@@ -111,6 +123,7 @@ impl AppState {
         // A focus phase that just ended releases anything parked during it.
         let round_ended = changes.iter().any(|c| c.from == Phase::Focus);
         self.run_reminders(app, elapsed_secs, round_ended);
+        self.sync_mood(app);
         self.save_debounced();
     }
 
@@ -165,12 +178,16 @@ impl AppState {
                 Intensity::Bubble | Intensity::Pet if mini => {
                     // The bar grows itself once it knows how tall the message
                     // rendered — see set_mini_height.
+                    if payload.intensity == Intensity::Pet {
+                        self.with(|m| m.begin_nag(payload.id));
+                    }
                     let _ = app.emit_to("mini", "mini:nudge", payload.clone());
                 }
                 Intensity::Bubble => {
                     let _ = crate::windows::show_bubble(app, payload.clone());
                 }
                 Intensity::Pet => {
+                    self.with(|m| m.begin_nag(payload.id));
                     let _ = crate::windows::ensure_pet(app);
                     let _ = app.emit_to("pet", "pet:nudge", payload.clone());
                 }

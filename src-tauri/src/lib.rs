@@ -149,6 +149,7 @@ pub fn run() {
             commands::toggle_mini_mode,
             commands::set_mini_height,
             commands::set_mini_placement,
+            commands::pet_interacted,
             commands::set_pet_placement,
             commands::show_pet,
             commands::hide_pet,

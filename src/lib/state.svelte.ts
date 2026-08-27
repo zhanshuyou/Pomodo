@@ -6,6 +6,7 @@ import {
   type StatsSummary,
   listModel,
   onChanged,
+  onPetState,
   onPhase,
   onTick,
   statsSummary,
@@ -57,6 +58,7 @@ const FALLBACK: Model = {
   nextReminderId: 0,
   miniEnabled: false,
   miniPlacement: null,
+  petMood: "focus",
 };
 
 class AppStore {
@@ -91,6 +93,9 @@ class AppStore {
   }
   get miniEnabled() {
     return this.model.miniEnabled;
+  }
+  get petMood() {
+    return this.model.petMood;
   }
   get tone(): Tone {
     return this.model.settings.tone;
@@ -127,6 +132,9 @@ class AppStore {
       // so refetch rather than trying to patch every dependent field by hand.
       await onPhase(() => void this.refresh()),
       await onChanged(() => void this.refresh()),
+      await onPetState((p) => {
+        this.model.petMood = p.state;
+      }),
     );
 
     this.ready = true;

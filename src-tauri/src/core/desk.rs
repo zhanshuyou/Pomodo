@@ -84,17 +84,23 @@ pub fn pet_should_show(pet_visible: bool, mini_enabled: bool) -> bool {
     pet_visible && !mini_enabled
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum PetMood {
+    #[default]
     Focus,
     Break,
     Nagging,
     Sleeping,
 }
 
-/// Seconds of inactivity before the pet dozes off, when 睡眠动画 is enabled.
-const SLEEP_AFTER_SECS: u32 = 300;
+/// Seconds the timer has to sit stopped before the pet dozes off, when 睡眠动画
+/// is enabled. "Idle" is the timer, not the person — there is no input hook.
+pub const SLEEP_AFTER_SECS: u32 = 300;
+
+/// How long a 宠物 nudge counts as "nagging" if nobody answers it. Matches the
+/// pet window's own bubble timeout so the hop stops when the bubble does.
+pub const NAG_SECS: u32 = 12;
 
 pub fn mood(
     phase: Phase,

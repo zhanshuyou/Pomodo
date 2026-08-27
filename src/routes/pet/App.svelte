@@ -9,6 +9,7 @@
     ackReminder,
     hidePet,
     onPetNudge,
+    petInteracted,
     setPetPlacement,
     showMain,
   } from "../../lib/ipc";
@@ -30,6 +31,14 @@
   let lastClickAt = 0;
 
   const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
+  // Rust decides the mood (pet:state); the local nudge only supplies the words.
+  const anim = $derived(
+    app.petMood === "nagging"
+      ? "hop"
+      : app.petMood === "sleeping"
+        ? "sleep"
+        : "bob",
+  );
   const bubbleText = $derived(
     nudge?.message ?? petLine(app.tone, minutesLeft(app.timer.remainingSecs)),
   );
@@ -90,6 +99,8 @@
     const wasPress = pressOrigin !== null && !dragStarted;
     pressOrigin = null;
     if (!wasPress) return;
+    // Any poke wakes a dozing pet, whether or not clicks do anything else.
+    void petInteracted();
     if (!app.settings.petFlags.clickInteract) return;
 
     // A pending nudge is answered by a single click — it is a direct reply to a
@@ -131,7 +142,7 @@
         map={pet.map}
         body={pet.body}
         scale={8}
-        anim={nudge ? "hop" : "bob"}
+        {anim}
         alt={pet.name}
       />
       <div class="shadow"></div>
@@ -150,7 +161,9 @@
     </button>
   </div>
 
-  <div class="bubble" class:nudging={!!nudge}>{bubbleText}</div>
+  <div class="bubble" class:nudging={!!nudge} class:dozing={anim === "sleep"}>
+    {anim === "sleep" && !nudge ? "zzz…" : bubbleText}
+  </div>
 </div>
 
 <style>
@@ -234,5 +247,10 @@
   }
   .bubble.nudging {
     border: 1.5px solid var(--accent);
+  }
+  .bubble.dozing {
+    color: var(--dim);
+    font-family: "Silkscreen", monospace;
+    letter-spacing: 0.08em;
   }
 </style>

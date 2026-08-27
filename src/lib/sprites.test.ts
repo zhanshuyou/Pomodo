@@ -3,6 +3,7 @@ import {
   LOCKED_BODY,
   PETS,
   SPRITE_SIZE,
+  closeEyes,
   oklchToRgba,
   paletteFor,
   rasterize,
@@ -186,5 +187,30 @@ describe("rasterize round-trip", () => {
     expect(back[7]).toBe(".obbebbbbbbebbo.");
     expect(back[9]).toBe(".obbpbwwwwbpbbo.");
     expect(back[9].indexOf("p")).toBeLessThan(back[9].indexOf("w"));
+  });
+});
+
+describe("closeEyes", () => {
+  it("turns each eye and its body neighbours into a shade line", () => {
+    const closed = closeEyes(["obebbo", "..e..w"]);
+    expect(closed).toEqual(["osssbo", "..s..w"]);
+  });
+
+  it("leaves a map with no eyes untouched", () => {
+    const map = ["bbbb", "...."];
+    expect(closeEyes(map)).toEqual(map);
+  });
+
+  it("closes the eyes of every built-in pet without changing anything else", () => {
+    for (const pet of PETS) {
+      const closed = closeEyes(pet.map);
+      expect(closed.join("")).not.toContain("e");
+      // Only e→s and b→s edits: the outline and belly are preserved.
+      pet.map.forEach((row, y) => {
+        for (let x = 0; x < row.length; x++) {
+          if (row[x] !== "e" && row[x] !== "b") expect(closed[y][x]).toBe(row[x]);
+        }
+      });
+    }
   });
 });

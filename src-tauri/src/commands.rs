@@ -11,7 +11,10 @@ pub fn list_model(state: State<'_, AppState>) -> Model {
 
 #[tauri::command]
 pub fn start(state: State<'_, AppState>, app: AppHandle) {
-    state.with(|m| m.timer.start());
+    state.with(|m| {
+        m.timer.start();
+        m.touch();
+    });
     state.emit_tick(&app);
     state.emit_changed(&app, Section::Timer);
     state.flush();
@@ -19,7 +22,10 @@ pub fn start(state: State<'_, AppState>, app: AppHandle) {
 
 #[tauri::command]
 pub fn pause(state: State<'_, AppState>, app: AppHandle) {
-    state.with(|m| m.timer.pause());
+    state.with(|m| {
+        m.timer.pause();
+        m.touch();
+    });
     state.emit_tick(&app);
     state.emit_changed(&app, Section::Timer);
     state.flush();
@@ -36,6 +42,7 @@ pub fn skip_phase(state: State<'_, AppState>, app: AppHandle) {
         if was_focus {
             m.record_focus_phase(false, elapsed);
         }
+        m.touch();
         change
     });
     let _ = app.emit(events::PHASE, change);
@@ -338,6 +345,8 @@ pub fn ack_reminder(state: State<'_, AppState>, app: AppHandle, id: u32) {
             Some(Builtin::Stand) => m.body.stands += 1,
             _ => {}
         }
+        m.end_nag(id);
+        m.touch();
     });
     state.emit_changed(&app, Section::Body);
     state.flush();
@@ -349,6 +358,7 @@ pub fn ignore_reminder(state: State<'_, AppState>, app: AppHandle, id: u32) {
         if let Some(r) = m.reminders.iter_mut().find(|r| r.id == id) {
             r.ignore();
         }
+        m.end_nag(id);
     });
     state.emit_changed(&app, Section::Reminders);
     state.flush();
@@ -361,6 +371,8 @@ pub fn snooze_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, minu
             r.remaining_secs = minutes.saturating_mul(60).max(1);
             r.deferred = false;
         }
+        m.end_nag(id);
+        m.touch();
     });
     state.emit_changed(&app, Section::Reminders);
     state.flush();
@@ -536,6 +548,13 @@ pub fn set_mini_placement(state: State<'_, AppState>, app: AppHandle, x: f64, y:
     state.flush();
 }
 
+/// The user poked the pet. Wakes it if it was dozing; nothing else changes.
+#[tauri::command]
+pub fn pet_interacted(state: State<'_, AppState>, app: AppHandle) {
+    state.with(|m| m.touch());
+    state.sync_mood(&app);
+}
+
 #[tauri::command]
 pub fn set_pet_placement(state: State<'_, AppState>, app: AppHandle, x: f64, y: f64) {
     let snap_edges = state.with(|m| m.settings.pet_flags.snap_edges);
@@ -594,6 +613,8 @@ pub fn dismiss_overlay(state: State<'_, AppState>, app: AppHandle, id: u32, ackn
                 r.ignore();
             }
         }
+        m.end_nag(id);
+        m.touch();
     });
     state.emit_changed(&app, Section::Reminders);
     state.flush();

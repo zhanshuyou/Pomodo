@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::core::desk::PetMood;
 use crate::core::reminder::Intensity;
 use crate::model::Phase;
 
@@ -7,6 +8,7 @@ pub const TICK: &str = "timer:tick";
 pub const PHASE: &str = "timer:phase";
 pub const CHANGED: &str = "model:changed";
 pub const REMINDER_FIRE: &str = "reminder:fire";
+pub const PET_STATE: &str = "pet:state";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,4 +55,10 @@ pub struct FirePayload {
     pub message: String,
     pub intensity: Intensity,
     pub color: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PetStatePayload {
+    pub state: PetMood,
 }

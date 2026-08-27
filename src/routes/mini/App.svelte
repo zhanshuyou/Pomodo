@@ -164,7 +164,13 @@
   >
     <div class="row">
       <div class="sprite">
-        <PetCanvas map={pet.map} body={pet.body} scale={2} alt={pet.name} />
+        <PetCanvas
+          map={pet.map}
+          body={pet.body}
+          scale={2}
+          anim={app.petMood === "sleeping" ? "sleep" : "none"}
+          alt={pet.name}
+        />
       </div>
 
       <div class="text">

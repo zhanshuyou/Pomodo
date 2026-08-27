@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use chrono::{DateTime, Datelike, Local, Timelike};
 
-use crate::core::desk::Placement;
+use crate::core::desk::{self, PetMood, Placement};
 use crate::core::pet::PetState;
 use crate::core::reminder::{FireContext, Reminder};
 use crate::core::reminder_copy;
@@ -187,6 +187,24 @@ pub struct Model {
     pub mini_enabled: bool,
     #[serde(default)]
     pub mini_placement: Option<Placement>,
+    /// Seconds the timer has sat stopped. Runtime-only: a relaunch starts awake.
+    #[serde(skip)]
+    pub idle_secs: u32,
+    /// The 宠物-tier nudge currently on screen, if any. Runtime-only.
+    #[serde(skip)]
+    pub nag: Option<Nag>,
+    /// Derived from the timer, `nag` and `idle_secs` by `sync_mood`. It rides
+    /// along in `list_model` so a freshly opened window can hydrate without
+    /// waiting for the next `pet:state`, but is never read back from disk.
+    #[serde(skip_deserializing, default)]
+    pub pet_mood: PetMood,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Nag {
+    pub id: u32,
+    pub remaining_secs: u32,
 }
 
 impl Model {
@@ -223,6 +241,55 @@ impl Model {
         };
     }
 
+    /// The user did something — the pet is not allowed to doze off yet.
+    pub fn touch(&mut self) {
+        self.idle_secs = 0;
+    }
+
+    pub fn begin_nag(&mut self, id: u32) {
+        self.nag = Some(Nag {
+            id,
+            remaining_secs: desk::NAG_SECS,
+        });
+    }
+
+    /// Answering (or ignoring) a nudge stops the hop, but only for that nudge —
+    /// a later one may already have replaced it.
+    pub fn end_nag(&mut self, id: u32) {
+        if self.nag.map(|n| n.id) == Some(id) {
+            self.nag = None;
+        }
+    }
+
+    /// Age the idle counter and the on-screen nudge by real elapsed time.
+    pub fn advance_presence(&mut self, elapsed_secs: u32) {
+        if self.timer.running {
+            self.idle_secs = 0;
+        } else {
+            self.idle_secs = self.idle_secs.saturating_add(elapsed_secs);
+        }
+        if let Some(nag) = &mut self.nag {
+            nag.remaining_secs = nag.remaining_secs.saturating_sub(elapsed_secs);
+            if nag.remaining_secs == 0 {
+                self.nag = None;
+            }
+        }
+    }
+
+    /// Recompute `pet_mood`; returns whether it changed so the caller can emit.
+    pub fn sync_mood(&mut self) -> bool {
+        let next = desk::mood(
+            self.timer.phase,
+            self.timer.running,
+            self.nag.is_some(),
+            self.idle_secs,
+            self.settings.pet_flags.sleep_animation,
+        );
+        let changed = next != self.pet_mood;
+        self.pet_mood = next;
+        changed
+    }
+
     pub fn fire_context(&self, now: DateTime<Local>, in_meeting: bool) -> FireContext {
         FireContext {
             minute_of_day: (now.hour() * 60 + now.minute()) as u16,
@@ -238,6 +305,106 @@ impl Model {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn asleep_model() -> Model {
+        Model {
+            settings: Settings {
+                pet_flags: PetFlags {
+                    sleep_animation: true,
+                    ..PetFlags::default()
+                },
+                ..Settings::default()
+            },
+            ..Model::default()
+        }
+    }
+
+    #[test]
+    fn a_stopped_timer_dozes_off_after_the_idle_threshold() {
+        let mut m = asleep_model();
+        assert!(!m.timer.running);
+        m.advance_presence(desk::SLEEP_AFTER_SECS - 1);
+        assert!(!m.sync_mood());
+        assert_eq!(m.pet_mood, PetMood::Focus);
+        m.advance_presence(1);
+        assert!(m.sync_mood());
+        assert_eq!(m.pet_mood, PetMood::Sleeping);
+    }
+
+    #[test]
+    fn a_running_timer_never_accumulates_idle_time() {
+        let mut m = asleep_model();
+        m.timer.start();
+        m.advance_presence(desk::SLEEP_AFTER_SECS * 2);
+        m.sync_mood();
+        assert_eq!(m.idle_secs, 0);
+        assert_eq!(m.pet_mood, PetMood::Focus);
+    }
+
+    #[test]
+    fn touching_the_pet_wakes_it() {
+        let mut m = asleep_model();
+        m.advance_presence(desk::SLEEP_AFTER_SECS);
+        m.sync_mood();
+        assert_eq!(m.pet_mood, PetMood::Sleeping);
+        m.touch();
+        assert!(m.sync_mood());
+        assert_eq!(m.pet_mood, PetMood::Focus);
+    }
+
+    #[test]
+    fn the_sleep_flag_off_keeps_the_pet_awake_however_long_it_idles() {
+        let mut m = Model::default();
+        m.advance_presence(desk::SLEEP_AFTER_SECS * 10);
+        m.sync_mood();
+        assert_eq!(m.pet_mood, PetMood::Focus);
+    }
+
+    #[test]
+    fn a_nudge_nags_until_answered_or_expired() {
+        let mut m = Model::default();
+        m.begin_nag(7);
+        assert!(m.sync_mood());
+        assert_eq!(m.pet_mood, PetMood::Nagging);
+
+        // Answering a different reminder leaves this nudge alone.
+        m.end_nag(3);
+        assert_eq!(m.nag.map(|n| n.id), Some(7));
+        m.end_nag(7);
+        m.sync_mood();
+        assert_eq!(m.pet_mood, PetMood::Focus);
+
+        m.begin_nag(8);
+        m.advance_presence(desk::NAG_SECS);
+        m.sync_mood();
+        assert_eq!(m.nag, None);
+        assert_eq!(m.pet_mood, PetMood::Focus);
+    }
+
+    #[test]
+    fn nagging_outranks_sleeping() {
+        let mut m = asleep_model();
+        m.advance_presence(desk::SLEEP_AFTER_SECS);
+        m.begin_nag(1);
+        m.sync_mood();
+        assert_eq!(m.pet_mood, PetMood::Nagging);
+    }
+
+    #[test]
+    fn presence_is_not_persisted() {
+        let mut m = Model {
+            idle_secs: 42,
+            pet_mood: PetMood::Sleeping,
+            ..Model::default()
+        };
+        m.begin_nag(1);
+        let json = serde_json::to_string(&m).unwrap();
+        assert!(json.contains("\"petMood\":\"sleeping\""));
+        let back: Model = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.idle_secs, 0);
+        assert_eq!(back.nag, None);
+        assert_eq!(back.pet_mood, PetMood::Focus);
+    }
 
     #[test]
     fn default_settings_match_the_spec() {

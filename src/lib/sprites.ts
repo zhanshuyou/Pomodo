@@ -215,6 +215,25 @@ export function paletteFor(body: string): Record<string, Rgba> {
 }
 
 /**
+ * The same pet with its eyes shut: every eye pixel, plus the body pixel on
+ * either side of it, becomes body shade — a short horizontal line where the
+ * dot was. Used for the 睡眠动画 mood. Non-body neighbours (outline, belly)
+ * are left alone so the face keeps its shape.
+ */
+export function closeEyes(map: readonly string[]): string[] {
+  return map.map((row) => {
+    const out = row.split("");
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] !== "e") continue;
+      out[x] = "s";
+      if (row[x - 1] === "b") out[x - 1] = "s";
+      if (row[x + 1] === "b") out[x + 1] = "s";
+    }
+    return out.join("");
+  });
+}
+
+/**
  * Rasterise a character map into a 16x16 RGBA buffer.
  * '.' and any unknown character become fully transparent.
  */

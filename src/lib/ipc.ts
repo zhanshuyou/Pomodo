@@ -52,6 +52,14 @@ export interface Model {
   nextReminderId: number;
   miniEnabled: boolean;
   miniPlacement: { x: number; y: number } | null;
+  /** Derived in Rust from timer / nudge / idle time; see `onPetState`. */
+  petMood: PetMood;
+}
+
+export type PetMood = "focus" | "break" | "nagging" | "sleeping";
+
+export interface PetStatePayload {
+  state: PetMood;
 }
 
 export interface TickPayload {
@@ -294,6 +302,11 @@ export const dismissOverlay = (id: number, acknowledged: boolean) =>
 
 export const onPetNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
   subscribe<FirePayload>("pet:nudge", cb);
+export const onPetState = (
+  cb: (p: PetStatePayload) => void,
+): Promise<UnlistenFn> => subscribe<PetStatePayload>("pet:state", cb);
+/** The user poked the pet — wakes it from 睡眠动画. */
+export const petInteracted = () => invoke<void>("pet_interacted");
 export const onMiniNudge = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
   subscribe<FirePayload>("mini:nudge", cb);
 export const onBubbleShow = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>

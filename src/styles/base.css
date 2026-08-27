@@ -79,6 +79,20 @@ button {
   }
 }
 
+/* 睡眠动画 — a slow breath, no bob. Not in the design spec; kept subtler than
+   anything the pet does while awake so a dozing pet reads as dozing. */
+@keyframes momo-breathe {
+  0%,
+  100% {
+    transform: scaleY(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scaleY(0.96) translateY(2px);
+    opacity: 0.7;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -1,15 +1,18 @@
 <script lang="ts">
-  import { SPRITE_SIZE, rasterize } from "../sprites";
+  import { SPRITE_SIZE, closeEyes, rasterize } from "../sprites";
 
   interface Props {
     map: readonly string[];
     body: string;
     scale?: number;
-    anim?: "none" | "bob" | "hop" | "sway";
+    /** `sleep` also shuts the pet's eyes; the others only move the canvas. */
+    anim?: "none" | "bob" | "hop" | "sway" | "sleep";
     alt?: string;
   }
 
   let { map, body, scale = 8, anim = "none", alt = "" }: Props = $props();
+
+  const pixels = $derived(anim === "sleep" ? closeEyes(map) : map);
 
   let canvas = $state<HTMLCanvasElement | null>(null);
 
@@ -20,7 +23,7 @@
   $effect(() => {
     const el = canvas;
     if (!el) return;
-    const buf = rasterize(map, body);
+    const buf = rasterize(pixels, body);
     const px = size;
 
     const off = document.createElement("canvas");
@@ -61,5 +64,8 @@
   }
   .pet--sway {
     animation: momo-sway 3s ease-in-out infinite;
+  }
+  .pet--sleep {
+    animation: momo-breathe 5s ease-in-out infinite;
   }
 </style>
