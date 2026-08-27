@@ -342,7 +342,7 @@ pub fn ack_reminder(state: State<'_, AppState>, app: AppHandle, id: u32) {
         });
         match builtin {
             Some(Builtin::Water) => m.body.water_cups += 1,
-            Some(Builtin::Stand) => m.body.stands += 1,
+            Some(Builtin::Stand) => m.body.stand_up(),
             _ => {}
         }
         m.end_nag(id);

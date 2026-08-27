@@ -52,6 +52,7 @@ const FALLBACK: Model = {
     stands: 0,
     standGoal: 6,
     longestSitMins: 0,
+    sitGoalMins: 90,
     day: "",
   },
   deepWork: false,

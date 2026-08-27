@@ -236,6 +236,7 @@ export interface BodyCounters {
   stands: number;
   standGoal: number;
   longestSitMins: number;
+  sitGoalMins: number;
   day: string;
 }
 

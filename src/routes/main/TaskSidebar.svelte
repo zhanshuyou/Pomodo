@@ -64,8 +64,10 @@
     {
       name: "久坐最长",
       value: `${app.body.longestSitMins} 分钟`,
-      // The design's 久坐超 90 分钟 threshold is the full bar.
-      pct: Math.min(100, (app.body.longestSitMins / 90) * 100),
+      pct: Math.min(
+        100,
+        (app.body.longestSitMins / Math.max(1, app.body.sitGoalMins)) * 100,
+      ),
       color: "oklch(0.7 0.12 60)",
     },
   ]);

@@ -134,8 +134,16 @@ impl AppState {
         // 检测到会议 / 通话 — reads the default input device's run state.
         let in_meeting = crate::platform::platform().microphone_in_use();
 
-        let fires = self.with(|m| {
+        let sit_changed = self.with(|m| {
             m.roll_body_day(&today);
+            // Sitting happens whether or not the timer runs.
+            m.body.advance_sit(elapsed_secs)
+        });
+        if sit_changed {
+            self.emit_changed(app, Section::Body);
+        }
+
+        let fires = self.with(|m| {
             let ctx = m.fire_context(now, in_meeting);
             let mut ids: Vec<(u32, crate::core::reminder::Intensity)> = Vec::new();
 

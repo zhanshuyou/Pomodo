@@ -143,9 +143,24 @@ pub struct BodyCounters {
     pub stands: u32,
     pub stand_goal: u32,
     pub longest_sit_mins: u32,
+    /// Full bar for 久坐最长 — the design's 久坐超 90 分钟 threshold.
+    #[serde(default = "default_sit_goal_mins")]
+    pub sit_goal_mins: u32,
+    /// The sitting streak in progress. Runtime-only: a relaunch cannot know how
+    /// long you have been in the chair, so it starts counting afresh.
+    #[serde(skip)]
+    pub sit_secs: u32,
     /// ISO date the counters belong to.
     pub day: String,
 }
+
+fn default_sit_goal_mins() -> u32 {
+    90
+}
+
+/// A tick gap this long means the machine was asleep or the lid was shut —
+/// treat it as having left the chair rather than as ninety minutes of sitting.
+pub const SIT_GAP_RESET_SECS: u32 = 10 * 60;
 
 impl Default for BodyCounters {
     fn default() -> Self {
@@ -155,8 +170,34 @@ impl Default for BodyCounters {
             stands: 0,
             stand_goal: 6,
             longest_sit_mins: 0,
+            sit_goal_mins: default_sit_goal_mins(),
+            sit_secs: 0,
             day: String::new(),
         }
+    }
+}
+
+impl BodyCounters {
+    /// Extend the sitting streak by real elapsed time. Returns whether the
+    /// minute shown in the sidebar changed, so the caller knows to emit.
+    pub fn advance_sit(&mut self, elapsed_secs: u32) -> bool {
+        if elapsed_secs >= SIT_GAP_RESET_SECS {
+            self.sit_secs = 0;
+            return false;
+        }
+        self.sit_secs = self.sit_secs.saturating_add(elapsed_secs);
+        let mins = self.sit_secs / 60;
+        if mins > self.longest_sit_mins {
+            self.longest_sit_mins = mins;
+            return true;
+        }
+        false
+    }
+
+    /// 站立 acknowledged — the streak starts over, the record stays.
+    pub fn stand_up(&mut self) {
+        self.stands += 1;
+        self.sit_secs = 0;
     }
 }
 
@@ -232,10 +273,10 @@ impl Model {
         if self.body.day == today {
             return;
         }
-        let goals = (self.body.water_goal, self.body.stand_goal);
         self.body = BodyCounters {
-            water_goal: goals.0,
-            stand_goal: goals.1,
+            water_goal: self.body.water_goal,
+            stand_goal: self.body.stand_goal,
+            sit_goal_mins: self.body.sit_goal_mins,
             day: today.to_string(),
             ..BodyCounters::default()
         };
@@ -317,6 +358,66 @@ mod tests {
             },
             ..Model::default()
         }
+    }
+
+    /// Sit for `mins` in one-second-per-tick reality: sixty ticks of a minute.
+    fn sit(b: &mut BodyCounters, mins: u32) {
+        for _ in 0..mins {
+            b.advance_sit(60);
+        }
+    }
+
+    #[test]
+    fn sitting_accumulates_into_the_daily_record() {
+        let mut b = BodyCounters::default();
+        assert!(!b.advance_sit(59));
+        assert_eq!(b.longest_sit_mins, 0);
+        assert!(b.advance_sit(1));
+        assert_eq!(b.longest_sit_mins, 1);
+        assert!(!b.advance_sit(30));
+    }
+
+    #[test]
+    fn standing_up_resets_the_streak_but_keeps_the_record() {
+        let mut b = BodyCounters::default();
+        sit(&mut b, 45);
+        b.stand_up();
+        assert_eq!(b.stands, 1);
+        assert_eq!(b.sit_secs, 0);
+        assert_eq!(b.longest_sit_mins, 45);
+        sit(&mut b, 20);
+        assert_eq!(b.longest_sit_mins, 45);
+        sit(&mut b, 30);
+        assert_eq!(b.longest_sit_mins, 50);
+    }
+
+    #[test]
+    fn a_long_clock_gap_counts_as_leaving_the_chair() {
+        let mut b = BodyCounters::default();
+        sit(&mut b, 40);
+        assert!(!b.advance_sit(SIT_GAP_RESET_SECS));
+        assert_eq!(b.sit_secs, 0);
+        assert_eq!(b.longest_sit_mins, 40);
+    }
+
+    #[test]
+    fn the_day_rolling_over_clears_the_streak_and_keeps_the_goal() {
+        let mut m = Model::default();
+        m.body.sit_goal_mins = 120;
+        sit(&mut m.body, 70);
+        m.body.day = "2026-08-26".into();
+        m.roll_body_day("2026-08-27");
+        assert_eq!(m.body.sit_secs, 0);
+        assert_eq!(m.body.longest_sit_mins, 0);
+        assert_eq!(m.body.sit_goal_mins, 120);
+    }
+
+    #[test]
+    fn a_body_saved_before_the_sit_goal_existed_still_loads() {
+        let json = r#"{"waterCups":1,"waterGoal":8,"stands":0,"standGoal":6,"longestSitMins":0,"day":"2026-08-27"}"#;
+        let b: BodyCounters = serde_json::from_str(json).unwrap();
+        assert_eq!(b.sit_goal_mins, 90);
+        assert_eq!(b.sit_secs, 0);
     }
 
     #[test]
