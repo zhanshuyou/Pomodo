@@ -344,6 +344,16 @@
           </button>
         {/each}
       </div>
+      {#if editing.intensity === "fullscreen"}
+        <label class="must">
+          <Toggle
+            checked={editing.rules.mustComplete}
+            onchange={(v) => patchRules({ ...editing.rules, mustComplete: v })}
+            label="必须完成"
+          />
+          <span>必须完成（不能按 ⎋ 逃跑，也不能稍后）</span>
+        </label>
+      {/if}
     </div>
 
     <button class="disclose" type="button" onclick={() => (advanced = !advanced)}>
@@ -716,6 +726,14 @@
     background: var(--card);
     font-family: var(--font-mono);
     font-size: 12px;
+  }
+  .must {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12.5px;
+    color: var(--dim);
   }
   .name {
     padding: 8px 10px;

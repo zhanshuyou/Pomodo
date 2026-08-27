@@ -55,6 +55,8 @@ pub struct FirePayload {
     pub message: String,
     pub intensity: Intensity,
     pub color: String,
+    /// Only meaningful for `Fullscreen`; the overlay hides its exits.
+    pub must_complete: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]

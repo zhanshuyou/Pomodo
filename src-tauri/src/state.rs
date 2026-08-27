@@ -191,6 +191,7 @@ impl AppState {
                             message: r.message.clone(),
                             intensity,
                             color: r.color.clone(),
+                            must_complete: r.rules.must_complete,
                         })
                 })
                 .collect::<Vec<_>>()

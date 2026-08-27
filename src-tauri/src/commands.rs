@@ -412,9 +412,20 @@ pub fn snooze_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, minu
 /// 稍后 from the fullscreen tier: close every overlay without acknowledging
 /// (which would count a 喝水 cup) or ignoring (which would feed escalation).
 #[tauri::command]
-pub fn snooze_overlay(state: State<'_, AppState>, app: AppHandle, id: u32, minutes: u32) {
+pub fn snooze_overlay(state: State<'_, AppState>, app: AppHandle, id: u32, minutes: u32) -> bool {
+    let must_complete = state.with(|m| {
+        m.reminders
+            .iter()
+            .find(|r| r.id == id)
+            .map(|r| r.rules.must_complete)
+            .unwrap_or(false)
+    });
+    if must_complete {
+        return false;
+    }
     crate::windows::dismiss_overlays(&app);
     snooze_reminder(state, app, id, minutes);
+    true
 }
 
 #[tauri::command]
@@ -655,8 +666,26 @@ pub fn hide_bubble(app: AppHandle) {
 }
 
 /// Close the overlay on every display. `acknowledged` distinguishes 做完了 from ⎋.
+/// Returns false — and leaves the overlay up — when a 必须完成 reminder is
+/// asked to go away without being completed. The webview hides ⎋ already;
+/// this is the backstop for a key event that slips through.
 #[tauri::command]
-pub fn dismiss_overlay(state: State<'_, AppState>, app: AppHandle, id: u32, acknowledged: bool) {
+pub fn dismiss_overlay(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    id: u32,
+    acknowledged: bool,
+) -> bool {
+    let must_complete = state.with(|m| {
+        m.reminders
+            .iter()
+            .find(|r| r.id == id)
+            .map(|r| r.rules.must_complete)
+            .unwrap_or(false)
+    });
+    if must_complete && !acknowledged {
+        return false;
+    }
     crate::windows::dismiss_overlays(&app);
     state.with(|m| {
         if let Some(r) = m.reminders.iter_mut().find(|r| r.id == id) {
@@ -671,4 +700,5 @@ pub fn dismiss_overlay(state: State<'_, AppState>, app: AppHandle, id: u32, ackn
     });
     state.emit_changed(&app, Section::Reminders);
     state.flush();
+    true
 }

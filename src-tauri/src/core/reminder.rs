@@ -42,6 +42,10 @@ pub struct Rules {
     pub silence_in_meeting: bool,
     pub escalate_after: u8,
     pub sound: String,
+    /// 必须完成 — a fullscreen firing that cannot be escaped or snoozed; the
+    /// only way out is 做完了 once the countdown has run down.
+    #[serde(default)]
+    pub must_complete: bool,
 }
 
 impl Default for Rules {
@@ -54,6 +58,7 @@ impl Default for Rules {
             silence_in_meeting: true,
             escalate_after: 3,
             sound: "木鱼 · 30%".to_string(),
+            must_complete: false,
         }
     }
 }
@@ -573,6 +578,13 @@ mod tests {
         let mut c = ctx();
         c.deep_work = true;
         assert_eq!(r.tick(60, &c), TickOutcome::Fire(Intensity::Bubble));
+    }
+
+    #[test]
+    fn rules_saved_before_must_complete_existed_still_load() {
+        let json = r#"{"activeFromMin":570,"activeToMin":1110,"weekdays":[true,true,true,true,true,false,false],"duringFocus":"defer","silenceInMeeting":true,"escalateAfter":3,"sound":"木鱼 · 30%"}"#;
+        let r: Rules = serde_json::from_str(json).unwrap();
+        assert!(!r.must_complete);
     }
 
     #[test]

@@ -39,7 +39,7 @@
     }, 1000);
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && fire) {
+      if (e.key === "Escape" && fire && !fire.mustComplete) {
         void dismissOverlay(fire.id, false);
       }
     };
@@ -63,14 +63,23 @@
   <span class="count">{mmss(left)}</span>
   <span class="line">{fire?.message ?? "站起来走走，看点远的东西"}</span>
   <div class="acts">
-    <button class="later" type="button" onclick={() => fire && void snoozeOverlay(fire.id)}>
-      {snoozeLabel(app.tone, SNOOZE_MINUTES)}
-    </button>
-    <button class="done" type="button" onclick={() => fire && void dismissOverlay(fire.id, true)}>
-      做完了
-    </button>
+    {#if !fire?.mustComplete}
+      <button class="later" type="button" onclick={() => fire && void snoozeOverlay(fire.id)}>
+        {snoozeLabel(app.tone, SNOOZE_MINUTES)}
+      </button>
+    {/if}
+    <!-- 必须完成 shows the button only once the countdown has run down. -->
+    {#if !fire?.mustComplete || left === 0}
+      <button class="done" type="button" onclick={() => fire && void dismissOverlay(fire.id, true)}>
+        做完了
+      </button>
+    {/if}
   </div>
-  <span class="escape">按 ⎋ 逃跑（它会记着）</span>
+  {#if fire?.mustComplete}
+    <span class="escape">这条得做完才能走</span>
+  {:else}
+    <span class="escape">按 ⎋ 逃跑（它会记着）</span>
+  {/if}
 </div>
 
 <style>

@@ -43,6 +43,7 @@ function seed(
       silenceInMeeting: true,
       escalateAfter: 3,
       sound: "木鱼 · 30%",
+      mustComplete: false,
     },
     remainingSecs: 1800,
     consecutiveIgnores: 0,

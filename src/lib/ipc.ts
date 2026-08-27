@@ -215,6 +215,7 @@ export interface Rules {
   silenceInMeeting: boolean;
   escalateAfter: number;
   sound: string;
+  mustComplete: boolean;
 }
 
 export interface Reminder {
@@ -252,6 +253,8 @@ export interface FirePayload {
   message: string;
   intensity: Intensity;
   color: string;
+  /** 必须完成: the fullscreen overlay offers no ⎋ and no 稍后. */
+  mustComplete?: boolean;
 }
 
 export interface ReminderPatch {

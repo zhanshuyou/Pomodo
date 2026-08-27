@@ -1,5 +1,15 @@
 import { flushSync, mount, unmount } from "svelte";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const overlayIpc = vi.hoisted(() => ({
+  onOverlayShow: vi.fn((_cb: (p: unknown) => void) => Promise.resolve(() => {})),
+  dismissOverlay: vi.fn(async () => true),
+  snoozeOverlay: vi.fn(async () => true),
+}));
+vi.mock("../../lib/ipc", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/ipc")>()),
+  ...overlayIpc,
+}));
 
 import BubbleToast from "../bubble/App.svelte";
 import DesktopPet from "../pet/App.svelte";
@@ -39,6 +49,39 @@ describe("fullscreen overlay", () => {
   it("offers a completion button and the escape hint", () => {
     expect(host.querySelector(".done")?.textContent?.trim()).toBe("做完了");
     expect(host.querySelector(".escape")?.textContent).toBe("按 ⎋ 逃跑（它会记着）");
+  });
+
+  it("hides every exit for a 必须完成 firing until the countdown ends", () => {
+    vi.useFakeTimers();
+    void unmount(component);
+    host.remove();
+    let deliver: ((p: unknown) => void) | undefined;
+    overlayIpc.onOverlayShow.mockImplementationOnce((cb) => {
+      deliver = cb;
+      return Promise.resolve(() => {});
+    });
+    overlayIpc.dismissOverlay.mockClear();
+    ({ host, component } = render(Overlay));
+    deliver?.({
+      id: 4,
+      name: "收工前复盘",
+      message: "先夸自己一句",
+      intensity: "fullscreen",
+      color: "oklch(0.68 0.1 300)",
+      mustComplete: true,
+    });
+    flushSync();
+    expect(host.querySelector(".later")).toBeNull();
+    expect(host.querySelector(".done")).toBeNull();
+    expect(host.querySelector(".escape")?.textContent).toBe("这条得做完才能走");
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(overlayIpc.dismissOverlay).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(161_000);
+    flushSync();
+    expect(host.querySelector(".done")).not.toBeNull();
+    vi.useRealTimers();
   });
 
   it("sways the pet at scale 3", () => {
