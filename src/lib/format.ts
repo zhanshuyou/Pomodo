@@ -3,6 +3,22 @@ function pad(n: number): string {
 }
 
 /** `MM:SS`, where MM is not capped at 60. */
+/** `14h20m`, the stat-card style. */
+export function hoursMinutes(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  return `${h}h${String(m).padStart(2, "0")}m`;
+}
+
+/** `1 小时 40 分` / `40 分钟`, for running text. */
+export function hoursMinutesCn(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.round((secs % 3600) / 60);
+  if (h === 0) return `${m} 分钟`;
+  if (m === 0) return `${h} 小时`;
+  return `${h} 小时 ${m} 分`;
+}
+
 export function mmss(totalSecs: number): string {
   const secs = Math.max(0, Math.floor(totalSecs));
   return `${pad(Math.floor(secs / 60))}:${pad(secs % 60)}`;

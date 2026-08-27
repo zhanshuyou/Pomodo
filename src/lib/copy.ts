@@ -1,3 +1,4 @@
+import { hoursMinutes, hoursMinutesCn } from "./format";
 import { type Tone, tone } from "./theme";
 
 export type Phase = "focus" | "shortBreak" | "longBreak";
@@ -20,12 +21,93 @@ export function petLine(t: Tone, minutes: number): string {
   );
 }
 
-export function petVerdict(t: Tone): string {
+export interface VerdictInput {
+  weekFocusSecs: number;
+  /** Percent versus the previous seven days; 0 when there is no prior week. */
+  weekDeltaPct: number;
+  /** Interruptions this week minus last week. */
+  interruptionsDelta: number;
+}
+
+/**
+ * Pomodo 的评价 — the spec's sample sentences, with the numbers filled in from
+ * the real week. The playful line for a good week is the spec's verbatim.
+ */
+export function petVerdict(t: Tone, s: VerdictInput): string {
+  const total = hoursMinutes(s.weekFocusSecs);
+  if (s.weekFocusSecs === 0) {
+    return tone(
+      t,
+      "本周尚无专注记录。",
+      "这周还没开始，没关系，从下一个番茄开始。",
+      "这周你一个番茄都没啃，我可盯着呢。",
+    );
+  }
+  const trend =
+    s.interruptionsDelta < 0 ? "中断减少" : s.interruptionsDelta > 0 ? "中断增多" : "中断持平";
+  if (s.weekDeltaPct === 0) {
+    return tone(
+      t,
+      `本周专注 ${total}，与上周持平，${trend}。`,
+      `这周专注了 ${hoursMinutesCn(s.weekFocusSecs)}，稳稳的。`,
+      `这周专注了 ${hoursMinutesCn(s.weekFocusSecs)}，还行，不至于挨骂。`,
+    );
+  }
+  // The absolute change, recovered from this week's total and the percentage.
+  const prev = (s.weekFocusSecs * 100) / (100 + s.weekDeltaPct);
+  const diff = hoursMinutesCn(Math.abs(s.weekFocusSecs - prev));
+  if (s.weekDeltaPct > 0) {
+    return tone(
+      t,
+      `本周专注 ${total}，较上周 +${s.weekDeltaPct}%，${trend}。`,
+      `这周你比上周多专注了 ${diff}，很稳。`,
+      "这周表现不错，我勉为其难地允许你今晚多睡半小时。",
+    );
+  }
   return tone(
     t,
-    "本周专注 14h20m，较上周 +12%，中断率下降。",
-    "这周你比上周多专注了 1 小时 40 分，很稳。",
-    "这周表现不错，我勉为其难地允许你今晚多睡半小时。",
+    `本周专注 ${total}，较上周 −${Math.abs(s.weekDeltaPct)}%，${trend}。`,
+    `这周比上周少专注了 ${diff}，下周慢慢补回来。`,
+    `这周比上周少了 ${diff}，我不评价，但我记下了。`,
+  );
+}
+
+/**
+ * The line under the round dots. `left` is how many rounds remain after the
+ * current one (roundsPerCycle − round); the artboard's round 2 of 4 gives the
+ * spec's "再 2 轮就能哄它去睡长觉（15 分钟）".
+ */
+export function roundsUntilLongBreak(
+  t: Tone,
+  phase: Phase,
+  left: number,
+  longBreakMins: number,
+): string {
+  const m = `${longBreakMins} 分钟`;
+  if (phase === "longBreak") {
+    return tone(t, `长休息中（${m}）。`, `好好歇着，${m}都是你的。`, `它在睡长觉，${m}内别吵。`);
+  }
+  if (phase === "shortBreak") {
+    return tone(
+      t,
+      `短休息中，之后还有 ${left} 轮进入长休息。`,
+      `歇一下，之后还有 ${left} 轮就能歇个长的。`,
+      `喘口气，还有 ${left} 轮才能哄它去睡长觉`,
+    );
+  }
+  if (left <= 0) {
+    return tone(
+      t,
+      `本轮结束后进入长休息（${m}）。`,
+      `这轮结束就能歇个长的（${m}）。`,
+      `这轮结束就能哄它去睡长觉（${m}）`,
+    );
+  }
+  return tone(
+    t,
+    `再 ${left} 轮进入长休息（${m}）。`,
+    `再 ${left} 轮就能歇个长的（${m}）。`,
+    `再 ${left} 轮就能哄它去睡长觉（${m}）`,
   );
 }
 

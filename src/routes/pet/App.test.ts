@@ -7,7 +7,7 @@ import Pet from "./App.svelte";
 const ipcSpies = vi.hoisted(() => ({
   ackReminder: vi.fn(async () => {}),
   ignoreReminder: vi.fn(async () => {}),
-  onPetNudge: vi.fn(),
+  onPetNudge: vi.fn((_cb: (p: unknown) => void) => Promise.resolve(() => {})),
   setPetHitRects: vi.fn(async (_rects: import("../../lib/ipc").HitRect[]) => {}),
 }));
 vi.mock("../../lib/ipc", async (importOriginal) => ({

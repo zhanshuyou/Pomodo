@@ -1,16 +1,11 @@
 <script lang="ts">
   import { petVerdict } from "../../lib/copy";
+  import { hoursMinutes } from "../../lib/format";
   import { app } from "../../lib/state.svelte";
   import { ACCENTS, barCellColor } from "../../lib/theme";
 
   const s = $derived(app.summary);
   const accent = $derived(ACCENTS[app.settings.accent]);
-
-  function hoursMinutes(secs: number): string {
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    return `${h}h${String(m).padStart(2, "0")}m`;
-  }
 
   /** `+12%` / `−4` use U+2212, matching the design. */
   function signed(n: number, suffix = ""): string {
@@ -102,7 +97,7 @@
     {/if}
     <div class="insight">
       <span class="ititle">Pomodo 的评价</span>
-      <span class="ibody">{petVerdict(app.tone)}</span>
+      <span class="ibody">{s ? petVerdict(app.tone, s) : ""}</span>
     </div>
   </div>
 </div>

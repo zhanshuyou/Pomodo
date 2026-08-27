@@ -58,6 +58,8 @@
   }
 
   function onRenameKey(event: KeyboardEvent) {
+    // The row underneath also listens for Enter (select) — keep it out of this.
+    event.stopPropagation();
     if (event.key === "Enter") {
       event.preventDefault();
       submitRename();

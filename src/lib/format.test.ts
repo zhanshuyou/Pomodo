@@ -1,4 +1,13 @@
 import { describe, expect, it } from "vitest";
+
+describe("hoursMinutesCn", () => {
+  it("drops the empty unit", async () => {
+    const { hoursMinutesCn } = await import("./format");
+    expect(hoursMinutesCn(40 * 60)).toBe("40 分钟");
+    expect(hoursMinutesCn(2 * 3600)).toBe("2 小时");
+    expect(hoursMinutesCn(3600 + 40 * 60)).toBe("1 小时 40 分");
+  });
+});
 import { endsAt, minutesLeft, mmss } from "./format";
 
 describe("mmss", () => {

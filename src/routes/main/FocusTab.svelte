@@ -2,7 +2,13 @@
   import Pet from "../../lib/components/Pet.svelte";
   import PixelButton from "../../lib/components/PixelButton.svelte";
   import SpeechBubble from "../../lib/components/SpeechBubble.svelte";
-  import { miniLabel, petLine, phaseLabel, runLabel } from "../../lib/copy";
+  import {
+    miniLabel,
+    petLine,
+    phaseLabel,
+    roundsUntilLongBreak,
+    runLabel,
+  } from "../../lib/copy";
   import { endsAt, minutesLeft, mmss } from "../../lib/format";
   import { pause, skipPhase, start, toggleMiniMode } from "../../lib/ipc";
   import { PETS } from "../../lib/sprites";
@@ -14,6 +20,14 @@
   const remaining = $derived(app.timer.remainingSecs);
   const cells = $derived(app.bellyCells);
   const roundsTotal = $derived(app.settings.roundsPerCycle);
+  const roundsHint = $derived(
+    roundsUntilLongBreak(
+      app.tone,
+      app.timer.phase,
+      Math.max(0, roundsTotal - app.timer.round),
+      Math.round(app.settings.longBreakSecs / 60),
+    ),
+  );
 
   function toggleRun() {
     void (app.timer.running ? pause() : start());
@@ -61,7 +75,7 @@
       {#each Array.from({ length: roundsTotal }, (_, i) => i) as i (i)}
         <span class="pip" class:on={i < app.timer.round}></span>
       {/each}
-      <span class="hint">再 2 轮就能哄它去睡长觉（15 分钟）</span>
+      <span class="hint">{roundsHint}</span>
     </div>
   </section>
 
