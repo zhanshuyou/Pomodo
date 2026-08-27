@@ -125,22 +125,25 @@ impl AppState {
     /// Advance the clock by real elapsed time, credit any completed focus phase to the
     /// active task, then emit. Called once per second by the tick thread.
     pub fn tick(&self, app: &AppHandle, elapsed_secs: u32) {
-        let changes = self.with(|m| {
+        let (changes, abandoned) = self.with(|m| {
             let settings = m.settings.clone();
             m.advance_presence(elapsed_secs);
+            let abandoned = m.advance_pause(elapsed_secs);
             let changes = m.timer.advance(elapsed_secs, &settings);
             for change in &changes {
                 if change.from == Phase::Focus {
                     m.record_focus_phase(change.completed, settings.focus_secs);
                 }
             }
-            changes
+            (changes, abandoned)
         });
 
         for change in &changes {
             let _ = app.emit(events::PHASE, change);
         }
-        if !changes.is_empty() {
+        // An abandoned pause reset the phase without a phase change; the
+        // windows still need to hear that stats and the countdown moved.
+        if !changes.is_empty() || abandoned {
             self.emit_changed(app, Section::Tasks);
         }
 
@@ -171,6 +174,7 @@ impl AppState {
         let fires = self.with(|m| {
             let ctx = m.fire_context(now, in_meeting);
             let mut ids: Vec<(u32, crate::core::reminder::Intensity)> = Vec::new();
+            let mut interrupted: Option<u32> = None;
 
             for reminder in &mut m.reminders {
                 if round_ended {
@@ -179,9 +183,19 @@ impl AppState {
                     }
                 }
                 match reminder.tick(elapsed_secs, &ctx) {
-                    TickOutcome::Fire(intensity) => ids.push((reminder.id, intensity)),
+                    TickOutcome::Fire(intensity) => {
+                        if ctx.in_focus {
+                            // Only 直接打断 gets this far while focusing; remember
+                            // it so the session can say what broke it.
+                            interrupted = Some(reminder.id);
+                        }
+                        ids.push((reminder.id, intensity));
+                    }
                     TickOutcome::Idle | TickOutcome::Deferred => {}
                 }
+            }
+            if interrupted.is_some() {
+                m.interrupted_by = interrupted;
             }
 
             ids.into_iter()

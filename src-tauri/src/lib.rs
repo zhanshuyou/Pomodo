@@ -175,7 +175,10 @@ pub fn run() {
         .expect("error while building the Pomodo application")
         .run(|app, event| {
             if let tauri::RunEvent::ExitRequested { .. } = event {
-                app.state::<AppState>().flush();
+                let state = app.state::<AppState>();
+                // Quitting in the middle of a focus round is an interruption.
+                state.with(|m| m.abandon_running_focus());
+                state.flush();
             }
         });
 }

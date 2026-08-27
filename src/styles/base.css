@@ -93,12 +93,32 @@ button {
   }
 }
 
+/* Opacity-only entrance for reduced motion: still a cue, never a move. */
+@keyframes momo-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion holds the pet still and cross-fades instead of hopping
+   (spec §3.3). Only the momo-* movement is switched off — a blanket
+   `animation: none` would also kill the fades that replace it. */
 @media (prefers-reduced-motion: reduce) {
+  [class*="pet--"],
+  [class*="frame--"],
+  .ring {
+    animation: none !important;
+  }
+  .toast,
+  .popover {
+    animation: momo-fade 0.2s ease both !important;
+  }
   *,
   *::before,
   *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
 }

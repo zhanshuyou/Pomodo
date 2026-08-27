@@ -188,7 +188,7 @@
     onpointerup={onPointerUp}
     onkeydown={onKey}
   >
-    <div class="pet" class:dragging>
+    <div class="pet" class:dragging class:nudging={!!nudge}>
       <Pet scale={8} {anim} alt={pet.name} />
       <div class="shadow"></div>
     </div>
@@ -327,6 +327,28 @@
   }
   .later:hover {
     color: var(--accent);
+  }
+  /* Without the hop, a nudge still has to be noticeable: fade the bubble in
+     and flash an accent ring around the pet three times. */
+  @media (prefers-reduced-motion: reduce) {
+    .bubble.nudging {
+      animation: momo-fade 0.3s ease both;
+    }
+    .pet.nudging {
+      border-radius: 14px;
+      outline: 3px solid var(--accent);
+      outline-offset: 4px;
+      animation: nudge-flash 0.3s ease 3;
+    }
+  }
+  @keyframes nudge-flash {
+    0%,
+    100% {
+      outline-color: var(--accent);
+    }
+    50% {
+      outline-color: transparent;
+    }
   }
   .bubble.dozing {
     color: var(--dim);

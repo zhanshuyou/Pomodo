@@ -234,6 +234,13 @@ pub struct Model {
     /// The 宠物-tier nudge currently on screen, if any. Runtime-only.
     #[serde(skip)]
     pub nag: Option<Nag>,
+    /// Seconds the current focus phase has sat paused. Runtime-only.
+    #[serde(skip)]
+    pub paused_secs: u32,
+    /// A 直接打断 reminder that fired during the current focus phase; recorded
+    /// on the session when the phase ends. Runtime-only.
+    #[serde(skip)]
+    pub interrupted_by: Option<u32>,
     /// Derived from the timer, `nag` and `idle_secs` by `sync_mood`. It rides
     /// along in `list_model` so a freshly opened window can hydrate without
     /// waiting for the next `pet:state`, but is never read back from disk.
@@ -280,6 +287,50 @@ impl Model {
             day: today.to_string(),
             ..BodyCounters::default()
         };
+    }
+
+    /// Seconds served so far in the current focus phase.
+    pub fn focus_elapsed_secs(&self) -> u32 {
+        self.settings
+            .focus_secs
+            .saturating_sub(self.timer.remaining_secs)
+    }
+
+    /// A focus phase paused this long is not a pause any more — the round is
+    /// over. What was served is recorded as an interruption and the phase
+    /// starts afresh, so a lunch break does not resurface as a half-run round.
+    pub const PAUSE_ABANDON_SECS: u32 = 10 * 60;
+
+    /// Age the pause counter; returns true when the phase was just abandoned.
+    pub fn advance_pause(&mut self, elapsed_secs: u32) -> bool {
+        if self.timer.running || self.timer.phase != Phase::Focus {
+            self.paused_secs = 0;
+            return false;
+        }
+        let served = self.focus_elapsed_secs();
+        if served == 0 {
+            // Never started, or already reset: nothing to abandon.
+            self.paused_secs = 0;
+            return false;
+        }
+        self.paused_secs = self.paused_secs.saturating_add(elapsed_secs);
+        if self.paused_secs < Self::PAUSE_ABANDON_SECS {
+            return false;
+        }
+        self.record_focus_phase(false, served);
+        self.timer.remaining_secs = self.settings.focus_secs;
+        self.paused_secs = 0;
+        true
+    }
+
+    /// The app is quitting mid-focus: the time served is an interruption.
+    pub fn abandon_running_focus(&mut self) {
+        if self.timer.running && self.timer.phase == Phase::Focus {
+            let served = self.focus_elapsed_secs();
+            if served > 0 {
+                self.record_focus_phase(false, served);
+            }
+        }
     }
 
     /// The user did something — the pet is not allowed to doze off yet.
@@ -365,6 +416,65 @@ mod tests {
         for _ in 0..mins {
             b.advance_sit(60);
         }
+    }
+
+    #[test]
+    fn a_focus_paused_past_the_threshold_is_recorded_and_reset() {
+        let mut m = Model::default();
+        m.timer.start();
+        m.timer.remaining_secs = m.settings.focus_secs - 300;
+        m.timer.pause();
+        for _ in 0..9 {
+            assert!(!m.advance_pause(60));
+        }
+        assert!(m.advance_pause(60));
+        assert_eq!(m.stats.sessions.len(), 1);
+        assert!(!m.stats.sessions[0].completed);
+        assert_eq!(m.stats.sessions[0].secs, 300);
+        assert_eq!(m.timer.remaining_secs, m.settings.focus_secs);
+        // Nothing left to abandon: no second session.
+        assert!(!m.advance_pause(Model::PAUSE_ABANDON_SECS));
+        assert_eq!(m.stats.sessions.len(), 1);
+    }
+
+    #[test]
+    fn a_pause_during_a_break_or_while_running_never_abandons() {
+        let mut m = Model::default();
+        m.timer.start();
+        m.timer.remaining_secs -= 60;
+        assert!(!m.advance_pause(Model::PAUSE_ABANDON_SECS));
+        m.timer.phase = Phase::ShortBreak;
+        m.timer.pause();
+        assert!(!m.advance_pause(Model::PAUSE_ABANDON_SECS));
+        assert!(m.stats.sessions.is_empty());
+    }
+
+    #[test]
+    fn quitting_mid_focus_records_the_served_time_as_an_interruption() {
+        let mut m = Model::default();
+        m.timer.start();
+        m.timer.remaining_secs -= 120;
+        m.abandon_running_focus();
+        assert_eq!(m.stats.sessions.len(), 1);
+        assert_eq!(m.stats.sessions[0].secs, 120);
+        assert!(!m.stats.sessions[0].completed);
+        // A paused timer at quit is not recorded twice over.
+        m.timer.pause();
+        m.abandon_running_focus();
+        assert_eq!(m.stats.sessions.len(), 1);
+    }
+
+    #[test]
+    fn an_interrupting_reminder_is_tagged_on_the_session_and_cleared() {
+        let mut m = Model {
+            interrupted_by: Some(7),
+            ..Model::default()
+        };
+        m.record_focus_phase(true, 1500);
+        assert_eq!(m.stats.sessions[0].interrupted_by, Some(7));
+        assert_eq!(m.interrupted_by, None);
+        m.record_focus_phase(true, 1500);
+        assert_eq!(m.stats.sessions[1].interrupted_by, None);
     }
 
     #[test]

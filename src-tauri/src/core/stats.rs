@@ -12,6 +12,9 @@ pub struct Session {
     pub secs: u32,
     pub task: Option<TaskId>,
     pub completed: bool,
+    /// The reminder that fired with 直接打断 during this focus phase, if any.
+    #[serde(default)]
+    pub interrupted_by: Option<u32>,
 }
 
 impl Session {
@@ -261,6 +264,7 @@ impl Model {
             secs,
             task: self.timer.active_task,
             completed,
+            interrupted_by: self.interrupted_by.take(),
         });
         if completed {
             self.pet.credit();
@@ -291,6 +295,7 @@ mod tests {
             secs: 1500,
             task: None,
             completed: true,
+            interrupted_by: None,
         }
     }
 
@@ -307,6 +312,7 @@ mod tests {
             secs: 1500,
             task: None,
             completed,
+            interrupted_by: None,
         }
     }
 
