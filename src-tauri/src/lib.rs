@@ -161,6 +161,7 @@ pub fn run() {
             commands::preview_sound,
             commands::set_all_sounds,
             commands::set_phase_sound,
+            commands::set_body_goals,
             commands::open_prefs,
             commands::up_next,
             commands::today_summary,

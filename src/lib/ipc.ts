@@ -275,6 +275,24 @@ export const previewSound = (sound: SoundSetting): Promise<void> =>
   IS_TAURI ? invoke<void>("preview_sound", { sound }) : Promise.resolve();
 export const setAllSounds = (sound: SoundSetting) =>
   invoke<void>("set_all_sounds", { sound });
+/** 身体这边的账 — the bars' denominators. Clamped in Rust; see BodyCounters::set_goals. */
+export const setBodyGoals = (goals: {
+  waterGoal: number;
+  standGoal: number;
+  sitGoalMins: number;
+}) => invoke<void>("set_body_goals", goals);
+/**
+ * Braces a reminder message may carry; Rust fills them from the body
+ * counters at fire time (reminder_copy::fill). Mirrored here for the editor's
+ * caption only.
+ */
+export const MESSAGE_PLACEHOLDERS: { key: string; label: string }[] = [
+  { key: "{cups}", label: "今日已喝杯数" },
+  { key: "{goal}", label: "每日目标杯数" },
+  { key: "{next}", label: "下一杯是第几杯" },
+  { key: "{stands}", label: "今日站起次数" },
+  { key: "{standGoal}", label: "每日站起目标" },
+];
 export const setPhaseSound = (which: PhaseEnd, sound: SoundSetting) =>
   invoke<void>("set_phase_sound", { which, sound });
 

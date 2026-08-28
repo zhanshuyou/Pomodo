@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::model::Tone;
+use crate::model::{BodyCounters, Tone};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -68,8 +68,8 @@ pub fn message(b: Builtin, tone: Tone) -> &'static str {
         ),
         Builtin::Water => pick(
             tone,
-            "补充 200ml 水，今日 6/8 杯。",
-            "喝口水吧，今天第 7 杯了。",
+            "补充 200ml 水，今日 {cups}/{goal} 杯。",
+            "喝口水吧，今天第 {next} 杯了。",
             "你的杯子在喊你，它说它很空。",
         ),
         Builtin::Eyes => pick(
@@ -136,6 +136,29 @@ pub fn template_message(name: &str, tone: Tone) -> Option<&'static str> {
     })
 }
 
+/// Placeholders a message may carry, filled in at fire time from the day's
+/// body counters so the pet quotes real numbers rather than the design's
+/// sample ones. Unknown braces are left alone.
+pub const PLACEHOLDERS: [(&str, &str); 5] = [
+    ("{cups}", "今日已喝杯数"),
+    ("{goal}", "每日目标杯数"),
+    ("{next}", "下一杯是第几杯"),
+    ("{stands}", "今日站起次数"),
+    ("{standGoal}", "每日站起目标"),
+];
+
+pub fn fill(message: &str, body: &BodyCounters) -> String {
+    if !message.contains('{') {
+        return message.to_string();
+    }
+    message
+        .replace("{cups}", &body.water_cups.to_string())
+        .replace("{goal}", &body.water_goal.to_string())
+        .replace("{next}", &(body.water_cups + 1).to_string())
+        .replace("{stands}", &body.stands.to_string())
+        .replace("{standGoal}", &body.stand_goal.to_string())
+}
+
 pub fn hint(b: Builtin, tone: Tone) -> &'static str {
     match b {
         Builtin::Stand => pick(
@@ -168,7 +191,7 @@ pub fn hint(b: Builtin, tone: Tone) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::Tone;
+    use crate::model::{BodyCounters, Tone};
 
     #[test]
     fn stand_carries_all_three_message_tones() {
@@ -186,15 +209,46 @@ mod tests {
         );
     }
 
+    fn body(cups: u32) -> BodyCounters {
+        BodyCounters {
+            water_cups: cups,
+            water_goal: 8,
+            stands: 2,
+            stand_goal: 6,
+            longest_sit_mins: 0,
+            sit_goal_mins: 90,
+            sit_secs: 0,
+            day: String::new(),
+        }
+    }
+
+    #[test]
+    fn water_renders_to_the_spec_copy_for_its_sample_counts() {
+        assert_eq!(
+            fill(message(Builtin::Water, Tone::Professional), &body(6)),
+            "补充 200ml 水，今日 6/8 杯。"
+        );
+        assert_eq!(
+            fill(message(Builtin::Water, Tone::Gentle), &body(6)),
+            "喝口水吧，今天第 7 杯了。"
+        );
+    }
+
+    #[test]
+    fn fill_leaves_plain_and_unknown_text_alone() {
+        assert_eq!(fill("起来！", &body(0)), "起来！");
+        assert_eq!(fill("{nope} {stands}/{standGoal}", &body(0)), "{nope} 2/6");
+    }
+
     #[test]
     fn water_carries_all_three_message_tones() {
         assert_eq!(
             message(Builtin::Water, Tone::Professional),
-            "补充 200ml 水，今日 6/8 杯。"
+            "补充 200ml 水，今日 {cups}/{goal} 杯。"
         );
         assert_eq!(
             message(Builtin::Water, Tone::Gentle),
-            "喝口水吧，今天第 7 杯了。"
+            "喝口水吧，今天第 {next} 杯了。"
         );
         assert_eq!(
             message(Builtin::Water, Tone::Playful),

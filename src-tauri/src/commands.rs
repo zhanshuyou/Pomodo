@@ -449,6 +449,20 @@ pub fn set_all_sounds(
     state.flush();
 }
 
+/// 身体这边的账 — the denominators of the three sidebar bars.
+#[tauri::command]
+pub fn set_body_goals(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    water_goal: u32,
+    stand_goal: u32,
+    sit_goal_mins: u32,
+) {
+    state.with(|m| m.body.set_goals(water_goal, stand_goal, sit_goal_mins));
+    state.emit_changed(&app, Section::Body);
+    state.flush();
+}
+
 /// 声音 · 计时 — the tone a phase ends on. Only natural completions ring;
 /// 跳过 stays silent (`AppState::tick`).
 #[tauri::command]

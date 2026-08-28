@@ -5,6 +5,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::core::desk::HitRect;
 use crate::core::reminder::{Intensity, TickOutcome};
+use crate::core::reminder_copy;
 use crate::events::{self, ChangedPayload, FirePayload, PetStatePayload, Section, TickPayload};
 use crate::model::{Model, Phase};
 use crate::store::Store;
@@ -213,7 +214,7 @@ impl AppState {
                         .map(|r| FirePayload {
                             id: r.id,
                             name: r.name.clone(),
-                            message: r.message.clone(),
+                            message: reminder_copy::fill(&r.message, &m.body),
                             intensity,
                             color: r.color.clone(),
                             must_complete: r.rules.must_complete,
@@ -486,6 +487,9 @@ mod reminder_wiring_tests {
             m.retone_reminders();
         });
         let model = state.snapshot();
-        assert_eq!(model.reminders[1].message, "补充 200ml 水，今日 6/8 杯。");
+        assert_eq!(
+            model.reminders[1].message,
+            "补充 200ml 水，今日 {cups}/{goal} 杯。"
+        );
     }
 }

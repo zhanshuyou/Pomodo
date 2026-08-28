@@ -249,6 +249,14 @@ impl BodyCounters {
     }
 
     /// 站立 acknowledged — the streak starts over, the record stays.
+    /// 每日目标. Clamped so a stray keystroke cannot make a bar unreachable
+    /// or zero-width.
+    pub fn set_goals(&mut self, water_goal: u32, stand_goal: u32, sit_goal_mins: u32) {
+        self.water_goal = water_goal.clamp(1, 30);
+        self.stand_goal = stand_goal.clamp(1, 30);
+        self.sit_goal_mins = sit_goal_mins.clamp(10, 600);
+    }
+
     pub fn stand_up(&mut self) {
         self.stands += 1;
         self.sit_secs = 0;
@@ -467,6 +475,21 @@ mod tests {
         sounds.set(PhaseEnd::BreakEnd, beep);
         assert_eq!(sounds.for_end_of(Phase::ShortBreak), beep);
         assert_eq!(sounds.for_end_of(Phase::Focus).tone, SoundTone::Chime);
+    }
+
+    #[test]
+    fn body_goals_are_clamped_to_something_reachable() {
+        let mut body = BodyCounters::default();
+        body.set_goals(0, 99, 5);
+        assert_eq!(
+            (body.water_goal, body.stand_goal, body.sit_goal_mins),
+            (1, 30, 10)
+        );
+        body.set_goals(10, 4, 120);
+        assert_eq!(
+            (body.water_goal, body.stand_goal, body.sit_goal_mins),
+            (10, 4, 120)
+        );
     }
 
     #[test]

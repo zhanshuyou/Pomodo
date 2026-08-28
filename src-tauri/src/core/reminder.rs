@@ -922,7 +922,7 @@ mod tests {
     fn retone_rewrites_an_unedited_message_and_leaves_an_edited_one_alone() {
         let mut r = water();
         r.retone(Tone::Professional);
-        assert_eq!(r.message, "补充 200ml 水，今日 6/8 杯。");
+        assert_eq!(r.message, "补充 200ml 水，今日 {cups}/{goal} 杯。");
 
         r.message = "我自己写的".into();
         r.message_edited = true;

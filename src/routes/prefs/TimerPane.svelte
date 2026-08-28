@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { setTimerDurations } from "../../lib/ipc";
+  import { setBodyGoals, setTimerDurations } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
 
   const secsToMin = (secs: number) => Math.round(secs / 60);
@@ -8,6 +8,31 @@
   let shortMin = $state(secsToMin(app.settings.shortBreakSecs));
   let longMin = $state(secsToMin(app.settings.longBreakSecs));
   let rounds = $state(app.settings.roundsPerCycle);
+
+  // 身体这边的账 — the sidebar bars' denominators. Same edit/commit dance,
+  // but a separate flag: a half-typed water goal must not block a timer
+  // change made in another window from showing up here, and vice versa.
+  let waterGoal = $state(app.body.waterGoal);
+  let standGoal = $state(app.body.standGoal);
+  let sitGoalMins = $state(app.body.sitGoalMins);
+  let bodyUnsaved = $state(false);
+
+  $effect(() => {
+    const b = app.body;
+    if (bodyUnsaved) return;
+    waterGoal = b.waterGoal;
+    standGoal = b.standGoal;
+    sitGoalMins = b.sitGoalMins;
+  });
+
+  function editBody() {
+    bodyUnsaved = true;
+  }
+
+  function commitBody() {
+    bodyUnsaved = false;
+    void setBodyGoals({ waterGoal, standGoal, sitGoalMins });
+  }
 
   /** True from the first keystroke on any field until its change commits. */
   let unsaved = $state(false);
@@ -107,6 +132,59 @@
     </div>
   </div>
   <p class="note">改动会在下一轮生效；进行中的这一轮按原时长走完。</p>
+
+  <h3>身体这边的账</h3>
+  <div class="rows">
+    <div class="row">
+      <span>每天喝水</span>
+      <span class="field">
+        <input
+          class="val"
+          type="number"
+          min="1"
+          max="30"
+          aria-label="每天喝水目标"
+          bind:value={waterGoal}
+          oninput={editBody}
+          onchange={commitBody}
+        />
+        <span class="unit">杯</span>
+      </span>
+    </div>
+    <div class="row">
+      <span>每天站起来</span>
+      <span class="field">
+        <input
+          class="val"
+          type="number"
+          min="1"
+          max="30"
+          aria-label="每天站起目标"
+          bind:value={standGoal}
+          oninput={editBody}
+          onchange={commitBody}
+        />
+        <span class="unit">次</span>
+      </span>
+    </div>
+    <div class="row">
+      <span>久坐上限</span>
+      <span class="field">
+        <input
+          class="val"
+          type="number"
+          min="10"
+          max="600"
+          aria-label="久坐上限"
+          bind:value={sitGoalMins}
+          oninput={editBody}
+          onchange={commitBody}
+        />
+        <span class="unit">min</span>
+      </span>
+    </div>
+  </div>
+  <p class="note">这三个数是专注页右下角三根条的满格；喝水和站起来分别由对应提醒的「做到了」计数。</p>
 </div>
 
 <style>

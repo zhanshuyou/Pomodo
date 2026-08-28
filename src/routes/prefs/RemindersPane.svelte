@@ -6,6 +6,7 @@
     type FocusBehavior,
     type Intensity,
     type Rules,
+    MESSAGE_PLACEHOLDERS,
     SOUND_TONES,
     type SoundTone,
     addReminder,
@@ -297,6 +298,12 @@
       ></textarea>
       {#if messageBlank}
         <span class="warn">先写一句它会怎么说，否则这条不会响。</span>
+      {:else if editing.message.includes("{")}
+        <span class="caption">
+          响的时候会填上真实数字：{MESSAGE_PLACEHOLDERS.map((p) => `${p.key} ${p.label}`).join(
+            " · ",
+          )}
+        </span>
       {/if}
     </div>
 
@@ -829,6 +836,11 @@
   .warn {
     font-size: 12px;
     color: oklch(0.55 0.15 25);
+  }
+  .caption {
+    font-size: 11.5px;
+    color: var(--faint);
+    line-height: 1.5;
   }
   .modes {
     display: flex;

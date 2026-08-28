@@ -1,8 +1,16 @@
 import { flushSync, mount, unmount } from "svelte";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "../../lib/state.svelte";
 import TimerPane from "./TimerPane.svelte";
+
+const setBodyGoals = vi.hoisted(() =>
+  vi.fn(async (_g: { waterGoal: number; standGoal: number; sitGoalMins: number }) => {}),
+);
+vi.mock("../../lib/ipc", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/ipc")>()),
+  setBodyGoals,
+}));
 
 describe("TimerPane", () => {
   let host: HTMLDivElement;
@@ -16,6 +24,8 @@ describe("TimerPane", () => {
       longBreakSecs: 900,
       roundsPerCycle: 4,
     };
+    app.model.body = { ...app.model.body, waterGoal: 8, standGoal: 6, sitGoalMins: 90 };
+    setBodyGoals.mockClear();
     host = document.createElement("div");
     document.body.appendChild(host);
     component = mount(TimerPane, { target: host });
@@ -33,7 +43,7 @@ describe("TimerPane", () => {
 
   it("shows the current durations in minutes and rounds as a plain count", () => {
     const values = inputs().map((i) => i.value);
-    expect(values).toEqual(["25", "5", "15", "4"]);
+    expect(values.slice(0, 4)).toEqual(["25", "5", "15", "4"]);
   });
 
   it("follows a settings change made elsewhere while untouched", () => {
@@ -58,5 +68,25 @@ describe("TimerPane", () => {
     flushSync();
 
     expect(focus.value).toBe("40");
+  });
+
+  it("shows the body goals and commits them together on change", () => {
+    const water = host.querySelector<HTMLInputElement>('input[aria-label="每天喝水目标"]');
+    const stand = host.querySelector<HTMLInputElement>('input[aria-label="每天站起目标"]');
+    const sit = host.querySelector<HTMLInputElement>('input[aria-label="久坐上限"]');
+    if (!water || !stand || !sit) throw new Error("missing body goal inputs");
+    expect([water.value, stand.value, sit.value]).toEqual(["8", "6", "90"]);
+
+    water.value = "10";
+    water.dispatchEvent(new Event("input", { bubbles: true }));
+    water.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(setBodyGoals).toHaveBeenCalledWith({ waterGoal: 10, standGoal: 6, sitGoalMins: 90 });
+  });
+
+  it("follows a body goal change made elsewhere while untouched", () => {
+    app.model.body = { ...app.model.body, standGoal: 4 };
+    flushSync();
+    const stand = host.querySelector<HTMLInputElement>('input[aria-label="每天站起目标"]');
+    expect(stand?.value).toBe("4");
   });
 });
