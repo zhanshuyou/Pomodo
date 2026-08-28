@@ -1,5 +1,7 @@
 <script lang="ts">
   import { petVerdict } from "../../lib/copy";
+  import { addQuietWindow } from "../../lib/ipc";
+  import { quietLabel } from "../../lib/rules";
   import { hoursMinutes } from "../../lib/format";
   import { app } from "../../lib/state.svelte";
   import { ACCENTS, barCellColor } from "../../lib/theme";
@@ -16,11 +18,24 @@
 
   const hour = (h: number) => `${String(h).padStart(2, "0")}:00`;
 
+  const hotspot = $derived(s?.interruptionHotspot ?? null);
   const hotspotText = $derived.by(() => {
-    const h = s?.interruptionHotspot;
+    const h = hotspot;
     if (!h) return null;
     return `${hour(h.startHour)}–${hour(h.endHour)}，${h.total} 轮里有 ${h.interruptions} 轮被打断。要不要把这段设成「勿扰 + 只留宠物提示」？`;
   });
+  /** A quiet window already covering the whole hotspot. */
+  const hotspotQuiet = $derived.by(() => {
+    const h = hotspot;
+    if (!h) return false;
+    const from = h.startHour * 60;
+    const to = h.endHour * 60;
+    return app.quietHours.some((w) => w.fromMin <= from && w.toMin >= to && w.fromMin < w.toMin);
+  });
+  function quietHotspot() {
+    if (!hotspot) return;
+    void addQuietWindow(hotspot.startHour * 60, hotspot.endHour * 60);
+  }
 
   const cards = $derived(
     s
@@ -93,6 +108,13 @@
       <div class="insight">
         <span class="ititle">被打断最多的时段</span>
         <span class="ibody">{hotspotText}</span>
+        {#if hotspot}
+          {#if hotspotQuiet}
+            <span class="iact done">已设为安静时段 {quietLabel(hotspot.startHour * 60, hotspot.endHour * 60)}</span>
+          {:else}
+            <button class="iact" type="button" onclick={quietHotspot}>设为安静时段</button>
+          {/if}
+        {/if}
       </div>
     {/if}
     <div class="insight">
@@ -205,6 +227,21 @@
   .ititle {
     font-size: 13px;
     font-weight: 600;
+  }
+  .iact {
+    align-self: flex-start;
+    padding: 5px 11px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-chip);
+    background: var(--card);
+    color: var(--ink);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .iact.done {
+    border-color: var(--line);
+    color: var(--dim);
+    cursor: default;
   }
   .ibody {
     font-size: 12.5px;

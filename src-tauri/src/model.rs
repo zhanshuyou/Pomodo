@@ -4,7 +4,7 @@ use chrono::{DateTime, Datelike, Local, Timelike};
 
 use crate::core::desk::{self, PetMood, Placement};
 use crate::core::pet::PetState;
-use crate::core::reminder::{FireContext, Reminder};
+use crate::core::reminder::{FireContext, QuietWindow, Reminder};
 use crate::core::reminder_copy;
 use crate::core::sound::{SoundSetting, SoundTone};
 use crate::core::stats::Stats;
@@ -281,6 +281,11 @@ pub struct Model {
     pub body: BodyCounters,
     #[serde(default)]
     pub deep_work: bool,
+    /// 安静时段; see `QuietWindow`.
+    #[serde(default)]
+    pub quiet_hours: Vec<QuietWindow>,
+    #[serde(default)]
+    pub next_quiet_id: u32,
     #[serde(default)]
     pub next_reminder_id: u32,
     #[serde(default)]
@@ -452,7 +457,29 @@ impl Model {
             in_focus: self.timer.running && self.timer.phase == Phase::Focus,
             in_meeting,
             deep_work: self.deep_work,
+            quiet: self.in_quiet_hours((now.hour() * 60 + now.minute()) as u16),
         }
+    }
+
+    pub fn in_quiet_hours(&self, minute_of_day: u16) -> bool {
+        self.quiet_hours.iter().any(|w| w.contains(minute_of_day))
+    }
+
+    /// Returns the new window's id. Two windows covering the same minutes
+    /// are harmless, so no de-duplication.
+    pub fn add_quiet_window(&mut self, from_min: u16, to_min: u16) -> u32 {
+        let id = self.next_quiet_id;
+        self.next_quiet_id += 1;
+        self.quiet_hours.push(QuietWindow {
+            id,
+            from_min: from_min.min(24 * 60),
+            to_min: to_min.min(24 * 60),
+        });
+        id
+    }
+
+    pub fn remove_quiet_window(&mut self, id: u32) {
+        self.quiet_hours.retain(|w| w.id != id);
     }
 }
 
@@ -475,6 +502,17 @@ mod tests {
         sounds.set(PhaseEnd::BreakEnd, beep);
         assert_eq!(sounds.for_end_of(Phase::ShortBreak), beep);
         assert_eq!(sounds.for_end_of(Phase::Focus).tone, SoundTone::Chime);
+    }
+
+    #[test]
+    fn quiet_windows_are_added_removed_and_consulted() {
+        let mut m = Model::default();
+        assert!(!m.in_quiet_hours(15 * 60 + 30));
+        let id = m.add_quiet_window(15 * 60, 16 * 60);
+        assert!(m.in_quiet_hours(15 * 60 + 30));
+        assert!(!m.in_quiet_hours(16 * 60));
+        m.remove_quiet_window(id);
+        assert!(m.quiet_hours.is_empty());
     }
 
     #[test]

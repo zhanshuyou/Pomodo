@@ -68,6 +68,32 @@ impl Default for Rules {
 
 /// Everything the engine needs to know about "now" to decide whether to fire.
 /// Passed in rather than read from the clock so every rule is unit-testable.
+/// 安静时段 — a slice of the day the stats tab can carve out of your worst
+/// interruption hour. Inside it nothing interrupts a focus round (直接打断
+/// becomes 推迟到本轮结束) and no firing is louder than 宠物提示.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuietWindow {
+    pub id: u32,
+    /// Minutes past midnight, inclusive.
+    pub from_min: u16,
+    /// Minutes past midnight, exclusive. Less than `from_min` wraps midnight.
+    pub to_min: u16,
+}
+
+impl QuietWindow {
+    pub fn contains(&self, minute_of_day: u16) -> bool {
+        if self.from_min == self.to_min {
+            return false;
+        }
+        if self.from_min < self.to_min {
+            (self.from_min..self.to_min).contains(&minute_of_day)
+        } else {
+            minute_of_day >= self.from_min || minute_of_day < self.to_min
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FireContext {
     pub minute_of_day: u16,
@@ -82,6 +108,8 @@ pub struct FireContext {
     pub in_focus: bool,
     pub in_meeting: bool,
     pub deep_work: bool,
+    /// Inside a `QuietWindow`.
+    pub quiet: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -358,11 +386,17 @@ impl Reminder {
         }
         // escalate_after == 0 means "never", not "after zero ignores".
         let after = self.rules.escalate_after;
-        if after > 0 && self.consecutive_ignores >= after {
+        let intensity = if after > 0 && self.consecutive_ignores >= after {
             self.consecutive_ignores = 0;
-            return Intensity::Fullscreen;
+            Intensity::Fullscreen
+        } else {
+            self.intensity
+        };
+        // 只留宠物提示 — a quiet window caps everything, escalation included.
+        if ctx.quiet && intensity == Intensity::Fullscreen {
+            return Intensity::Pet;
         }
-        self.intensity
+        intensity
     }
 
     /// Advance this reminder by `elapsed_secs` of real time.
@@ -420,7 +454,12 @@ impl Reminder {
             return TickOutcome::Idle;
         }
         if ctx.in_focus {
-            match self.rules.during_focus {
+            // 勿扰 — inside a quiet window nothing gets to interrupt.
+            let behavior = match self.rules.during_focus {
+                FocusBehavior::Interrupt if ctx.quiet => FocusBehavior::Defer,
+                other => other,
+            };
+            match behavior {
                 FocusBehavior::Silence => return TickOutcome::Idle,
                 FocusBehavior::Defer => {
                     self.deferred = true;
@@ -491,6 +530,7 @@ mod tests {
             in_focus: false,
             in_meeting: false,
             deep_work: false,
+            quiet: false,
         }
     }
 
@@ -582,6 +622,51 @@ mod tests {
     fn a_blank_reminder_stays_silent_until_it_has_something_to_say() {
         let mut r = Reminder::blank(9, "新提醒".into(), "oklch(0.63 0.13 40)".into());
         assert_eq!(r.tick(45 * 60, &ctx()), TickOutcome::Idle);
+    }
+
+    #[test]
+    fn a_quiet_window_contains_its_minutes_and_wraps_midnight() {
+        let w = QuietWindow {
+            id: 0,
+            from_min: 15 * 60,
+            to_min: 16 * 60,
+        };
+        assert!(w.contains(15 * 60));
+        assert!(w.contains(15 * 60 + 59));
+        assert!(!w.contains(16 * 60));
+        assert!(!w.contains(14 * 60 + 59));
+        let night = QuietWindow {
+            id: 1,
+            from_min: 23 * 60,
+            to_min: 60,
+        };
+        assert!(night.contains(23 * 60 + 30));
+        assert!(night.contains(10));
+        assert!(!night.contains(60));
+        assert!(!QuietWindow {
+            id: 2,
+            from_min: 60,
+            to_min: 60
+        }
+        .contains(60));
+    }
+
+    #[test]
+    fn a_quiet_window_turns_interrupt_into_defer_and_caps_at_pet() {
+        let mut r = water();
+        r.rules.during_focus = FocusBehavior::Interrupt;
+        r.intensity = Intensity::Fullscreen;
+        let mut c = ctx();
+        c.quiet = true;
+        c.in_focus = true;
+        assert_eq!(r.tick(1800, &c), TickOutcome::Deferred);
+        c.in_focus = false;
+        assert_eq!(r.release_deferred(&c), Some(Intensity::Pet));
+
+        // Escalation is capped too.
+        let mut r = water();
+        r.consecutive_ignores = 3;
+        assert_eq!(r.tick(1800, &c), TickOutcome::Fire(Intensity::Pet));
     }
 
     #[test]

@@ -60,6 +60,7 @@ export interface Model {
   reminders: Reminder[];
   body: BodyCounters;
   deepWork: boolean;
+  quietHours: QuietWindow[];
   miniEnabled: boolean;
   /** Derived in Rust from timer / nudge / idle time; see `onPetState`. */
   petMood: PetMood;
@@ -342,6 +343,20 @@ export interface FirePayload {
   /** The overlay's countdown; absent only in tests that predate it. */
   durationSecs?: number;
 }
+
+/**
+ * 安静时段: inside it 直接打断 becomes 推迟到本轮结束 and nothing rings louder
+ * than 宠物提示. Minutes past midnight; `toMin` exclusive, wraps midnight.
+ */
+export interface QuietWindow {
+  id: number;
+  fromMin: number;
+  toMin: number;
+}
+export const addQuietWindow = (fromMin: number, toMin: number) =>
+  invoke<number>("add_quiet_window", { fromMin, toMin });
+export const deleteQuietWindow = (id: number) =>
+  invoke<void>("delete_quiet_window", { id });
 
 export interface ReminderPatch {
   name?: string;

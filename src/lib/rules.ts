@@ -30,6 +30,11 @@ export function weekdaysLabel(days: readonly boolean[]): string {
   return "周" + on.map((i) => WEEKDAY_SHORT[i]).join("、");
 }
 
+/** `15:00–16:00`, for a QuietWindow row. */
+export function quietLabel(fromMin: number, toMin: number): string {
+  return `${minutesToTime(fromMin)}–${minutesToTime(toMin)}`;
+}
+
 export function escalationLabel(after: number): string {
   return after > 0 ? `忽略 ${after} 次后升级为全屏` : "不升级";
 }

@@ -63,6 +63,7 @@ const FALLBACK: Model = {
     day: "",
   },
   deepWork: false,
+  quietHours: [],
   miniEnabled: false,
   petMood: "focus",
 };
@@ -100,6 +101,9 @@ class AppStore {
   }
   get deepWork() {
     return this.model.deepWork;
+  }
+  get quietHours() {
+    return this.model.quietHours;
   }
   get miniEnabled() {
     return this.model.miniEnabled;

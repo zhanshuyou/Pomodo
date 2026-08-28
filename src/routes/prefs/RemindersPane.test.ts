@@ -9,10 +9,15 @@ const updateReminder = vi.hoisted(() =>
   vi.fn(async (_id: number, _patch: import("../../lib/ipc").ReminderPatch) => {}),
 );
 const addReminder = vi.hoisted(() => vi.fn(async (_template: string | null) => 42));
+const quiet = vi.hoisted(() => ({
+  addQuietWindow: vi.fn(async (_from: number, _to: number) => 7),
+  deleteQuietWindow: vi.fn(async (_id: number) => {}),
+}));
 vi.mock("../../lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/ipc")>()),
   updateReminder,
   addReminder,
+  ...quiet,
 }));
 
 /** A stand-in for what Rust's Reminder::seed produces, with spec copy. */
@@ -160,6 +165,27 @@ describe("RemindersPane", () => {
     note.value = "仅工作日";
     note.dispatchEvent(new Event("change", { bubbles: true }));
     expect(updateReminder).toHaveBeenCalledWith(0, { note: "仅工作日" });
+  });
+
+  it("lists quiet windows, adds one from the time inputs and deletes one", () => {
+    app.model.quietHours = [{ id: 3, fromMin: 15 * 60, toMin: 16 * 60 }];
+    flushSync();
+    expect(host.querySelector(".quiettime")?.textContent).toBe("15:00–16:00");
+
+    quiet.addQuietWindow.mockClear();
+    const from = host.querySelector<HTMLInputElement>('input[aria-label="安静时段开始"]');
+    const to = host.querySelector<HTMLInputElement>('input[aria-label="安静时段结束"]');
+    if (!from || !to) throw new Error("no time inputs");
+    from.value = "09:00";
+    from.dispatchEvent(new Event("input", { bubbles: true }));
+    to.value = "10:30";
+    to.dispatchEvent(new Event("input", { bubbles: true }));
+    [...host.querySelectorAll<HTMLButtonElement>(".quietadd .blank")][0].click();
+    expect(quiet.addQuietWindow).toHaveBeenCalledWith(9 * 60, 10 * 60 + 30);
+
+    host.querySelector<HTMLButtonElement>(".quietdel")?.click();
+    expect(quiet.deleteQuietWindow).toHaveBeenCalledWith(3);
+    app.model.quietHours = [];
   });
 
   it("lists every reminder with its detail line", () => {

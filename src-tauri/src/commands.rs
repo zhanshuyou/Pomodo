@@ -463,6 +463,27 @@ pub fn set_all_sounds(
     state.flush();
 }
 
+/// 安静时段 — see `QuietWindow`. Minutes past midnight, `to` exclusive.
+#[tauri::command]
+pub fn add_quiet_window(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    from_min: u16,
+    to_min: u16,
+) -> u32 {
+    let id = state.with(|m| m.add_quiet_window(from_min, to_min));
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+    id
+}
+
+#[tauri::command]
+pub fn delete_quiet_window(state: State<'_, AppState>, app: AppHandle, id: u32) {
+    state.with(|m| m.remove_quiet_window(id));
+    state.emit_changed(&app, Section::Reminders);
+    state.flush();
+}
+
 /// 身体这边的账 — the denominators of the three sidebar bars.
 #[tauri::command]
 pub fn set_body_goals(

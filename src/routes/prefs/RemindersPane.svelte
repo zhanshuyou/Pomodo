@@ -9,7 +9,9 @@
     MESSAGE_PLACEHOLDERS,
     SOUND_TONES,
     type SoundTone,
+    addQuietWindow,
     addReminder,
+    deleteQuietWindow,
     deleteReminder,
     previewSound,
     soundLabel,
@@ -22,6 +24,7 @@
     WEEKDAY_SHORT,
     escalationLabel,
     minutesToTime,
+    quietLabel,
     timeToMinutes,
     weekdaysLabel,
     withWeekday,
@@ -48,6 +51,16 @@
   ];
 
   let editId = $state<number | null>(null);
+
+  /** The 安静时段 add row; defaults to the design's worst hour. */
+  let quietFrom = $state("15:00");
+  let quietTo = $state("16:00");
+  function addQuiet() {
+    const from = timeToMinutes(quietFrom);
+    const to = timeToMinutes(quietTo);
+    if (from === null || to === null || from === to) return;
+    void addQuietWindow(from, to);
+  }
   let advanced = $state(false);
   /** The one row currently asking whether it should really go. */
   let confirmingId = $state<number | null>(null);
@@ -264,6 +277,37 @@
     {#if app.reminders.length === 0}
       <p class="remempty">还没有提醒，从上面抓一个模板</p>
     {/if}
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="quiet">
+    <div class="sechead">
+      <span class="num">04</span>
+      <span class="sectitle">安静时段</span>
+    </div>
+    <span class="seccaption">
+      这段时间里专注不会被打断（直接打断改为推迟到本轮结束），最响也只到宠物提示。
+    </span>
+    {#each app.quietHours as w (w.id)}
+      <div class="quietrow">
+        <span class="quiettime">{quietLabel(w.fromMin, w.toMin)}</span>
+        <button
+          class="del quietdel"
+          type="button"
+          aria-label="删除安静时段 {quietLabel(w.fromMin, w.toMin)}"
+          onclick={() => void deleteQuietWindow(w.id)}
+        >
+          ×
+        </button>
+      </div>
+    {/each}
+    <div class="quietadd">
+      <input class="qtime" type="time" aria-label="安静时段开始" bind:value={quietFrom} />
+      <span class="dash">–</span>
+      <input class="qtime" type="time" aria-label="安静时段结束" bind:value={quietTo} />
+      <button class="blank" type="button" onclick={addQuiet}>＋ 添加</button>
+    </div>
   </section>
 </div>
 
@@ -862,6 +906,40 @@
     font: inherit;
     font-size: 13px;
     color: var(--ink);
+  }
+  .quiet {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .quietrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+  .quietdel {
+    opacity: 0.6;
+  }
+  .quietadd {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .qtime {
+    padding: 4px 6px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    font: inherit;
+    font-size: 12px;
+  }
+  .dash {
+    color: var(--faint);
   }
   .swatches {
     display: flex;
