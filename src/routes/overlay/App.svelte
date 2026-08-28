@@ -13,11 +13,8 @@
   import { PETS } from "../../lib/sprites";
   import { app } from "../../lib/state.svelte";
 
-  /** Shown before any firing arrives — the design's 02:41. */
-  const IDLE_SECS = 161;
-
   let fire = $state<FirePayload | null>(null);
-  let left = $state(IDLE_SECS);
+  let left = $state(0);
   /** The countdown has finished and Rust has been told; do not tell it again. */
   let finished = false;
 
@@ -28,11 +25,16 @@
 
     const un = onOverlayShow((payload) => {
       fire = payload;
-      left = payload.durationSecs ?? IDLE_SECS;
+      // Bubble/pet fires omit the duration; an overlay always carries one.
+      left = payload.durationSecs ?? 60;
       finished = false;
     });
 
+    // The window can exist before its payload does (one is created per
+    // display, then told what to say); until then it shows nothing rather
+    // than a made-up countdown.
     const ticker = setInterval(() => {
+      if (!fire) return;
       if (left > 0) {
         left -= 1;
       } else if (fire && !finished && !fire.mustComplete) {
@@ -63,29 +65,36 @@
   });
 </script>
 
-<div class="mask">
-  <Pet scale={3} anim="sway" slot="nag" alt={pet.name} />
-  <span class="count">{mmss(left)}</span>
-  <span class="line">{fire?.message ?? "站起来走走，看点远的东西"}</span>
-  <div class="acts">
-    {#if !fire?.mustComplete}
-      <button class="later" type="button" onclick={() => fire && void snoozeOverlay(fire.id)}>
-        {snoozeLabel(app.tone, SNOOZE_MINUTES)}
-      </button>
-    {/if}
-    <!-- 必须完成 shows the button only once the countdown has run down. -->
-    {#if !fire?.mustComplete || left === 0}
-      <button class="done" type="button" onclick={() => fire && void dismissOverlay(fire.id, true)}>
-        做完了
-      </button>
+{#if fire}
+  {@const f = fire}
+  <div class="mask">
+    <Pet scale={3} anim="sway" slot="nag" alt={pet.name} />
+    <span class="name">
+      <span class="dot" style:background={f.color}></span>
+      {f.name}
+    </span>
+    <span class="count">{mmss(left)}</span>
+    <span class="line">{f.message}</span>
+    <div class="acts">
+      {#if !f.mustComplete}
+        <button class="later" type="button" onclick={() => void snoozeOverlay(f.id)}>
+          {snoozeLabel(app.tone, SNOOZE_MINUTES)}
+        </button>
+      {/if}
+      <!-- 必须完成 shows the button only once the countdown has run down. -->
+      {#if !f.mustComplete || left === 0}
+        <button class="done" type="button" onclick={() => void dismissOverlay(f.id, true)}>
+          做完了
+        </button>
+      {/if}
+    </div>
+    {#if f.mustComplete}
+      <span class="escape">这条得做完才能走</span>
+    {:else}
+      <span class="escape">按 ⎋ 逃跑（它会记着）</span>
     {/if}
   </div>
-  {#if fire?.mustComplete}
-    <span class="escape">这条得做完才能走</span>
-  {:else}
-    <span class="escape">按 ⎋ 逃跑（它会记着）</span>
-  {/if}
-</div>
+{/if}
 
 <style>
   :global(html),
@@ -104,6 +113,19 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
+  }
+  .name {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: oklch(0.97 0.004 80 / 0.75);
+  }
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    flex: none;
   }
   .count {
     font-family: var(--font-mono);

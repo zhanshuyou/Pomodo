@@ -51,6 +51,15 @@ export function ringGradient(accent: string, pct: number): string {
 }
 
 /** Elapsed fraction of a phase as a percentage, 0..100. */
+/**
+ * The belly's 10 cells, mirroring Timer::belly_cells in Rust so a freshly
+ * mounted window can draw the belly from list_model instead of waiting for
+ * the next timer:tick.
+ */
+export function bellyCellsFor(totalSecs: number, remainingSecs: number): number {
+  return Math.round(elapsedPct(totalSecs, remainingSecs) / 10);
+}
+
 export function elapsedPct(totalSecs: number, remainingSecs: number): number {
   if (totalSecs <= 0) return 0;
   return ((totalSecs - remainingSecs) / totalSecs) * 100;

@@ -11,7 +11,7 @@ import {
   onTick,
   statsSummary,
 } from "./ipc";
-import { ACCENTS, DEFAULT_ACCENT, DEFAULT_TONE, type Tone } from "./theme";
+import { ACCENTS, DEFAULT_ACCENT, DEFAULT_TONE, type Tone, bellyCellsFor } from "./theme";
 
 const FALLBACK: Model = {
   timer: {
@@ -152,7 +152,21 @@ class AppStore {
 
   async refresh(): Promise<void> {
     this.model = await listModel();
+    this.bellyCells = bellyCellsFor(this.phaseDurationSecs(), this.model.timer.remainingSecs);
     await this.refreshStats();
+  }
+
+  /** settings.duration_for(timer.phase). */
+  phaseDurationSecs(): number {
+    const s = this.model.settings;
+    switch (this.model.timer.phase) {
+      case "focus":
+        return s.focusSecs;
+      case "shortBreak":
+        return s.shortBreakSecs;
+      case "longBreak":
+        return s.longBreakSecs;
+    }
   }
 
   async refreshStats(): Promise<void> {

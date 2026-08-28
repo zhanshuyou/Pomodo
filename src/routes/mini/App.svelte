@@ -157,6 +157,9 @@
     pressOrigin = null;
     if (!wasPress) return;
 
+    // 点击互动 off means the bar is furniture: drag it, hover its buttons,
+    // but a stray double-click must not yank the main window back.
+    if (!app.settings.petFlags.clickInteract) return;
     const now = Date.now();
     if (now - lastClickAt < DOUBLE_CLICK_MS) {
       lastClickAt = 0;
@@ -229,7 +232,7 @@
     {#if nudge}
       <div class="nudge-row">
         <button class="nudge" type="button" onclick={answerNudge}>
-          <span class="nudge-name">{nudge.name}</span>
+          <span class="nudge-name" style:color={nudge.color}>{nudge.name}</span>
           <span class="nudge-text">{nudge.message}</span>
         </button>
         <button

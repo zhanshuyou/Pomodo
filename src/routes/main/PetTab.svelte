@@ -48,6 +48,8 @@
   let error = $state("");
   /** A file is being dragged over the window: light the drop slot up. */
   let dragOver = $state(false);
+  /** Which of the three states a dropped file (or the slot's click) lands in. */
+  let dropSlot = $state<PetSlot>("focus");
 
   /**
    * Handle one OS drag-and-drop event. Exported so the test can feed events
@@ -71,7 +73,7 @@
       error = `不支持的图片格式：${ext || "（无扩展名）"}，请拖入 PNG / GIF / APNG / WebP`;
       return;
     }
-    importCustomPet("focus", path).catch((err) => (error = String(err)));
+    importCustomPet(dropSlot, path).catch((err) => (error = String(err)));
   }
 
   onMount(() => {
@@ -163,14 +165,31 @@
     </section>
 
     <section class="custom">
-      <div class="slot" class:dragover={dragOver}>
-        {#if app.pet.custom.focus}
-          <img src={petImageSrc(app.pet.custom.focus)} alt="自定义宠物（专注）" />
-        {:else}
-          <button class="drop" type="button" onclick={() => void importSlot("focus")}>
-            拖入你的宠物 PNG / GIF
-          </button>
-        {/if}
+      <div class="slotcol">
+        <div class="slot" class:dragover={dragOver}>
+          {#if app.pet.custom[dropSlot]}
+            {@const label = SLOTS.find((s) => s.key === dropSlot)?.label ?? ""}
+            <img src={petImageSrc(app.pet.custom[dropSlot] ?? "")} alt="自定义宠物（{label}）" />
+          {:else}
+            <button class="drop" type="button" onclick={() => void importSlot(dropSlot)}>
+              拖入你的宠物 PNG / GIF
+            </button>
+          {/if}
+        </div>
+        <div class="droptarget" role="radiogroup" aria-label="拖入到哪个状态">
+          {#each SLOTS as slot (slot.key)}
+            <button
+              class="target"
+              class:on={dropSlot === slot.key}
+              type="button"
+              role="radio"
+              aria-checked={dropSlot === slot.key}
+              onclick={() => (dropSlot = slot.key)}
+            >
+              {slot.label}
+            </button>
+          {/each}
+        </div>
       </div>
 
       <div class="customtext">
@@ -335,6 +354,31 @@
     flex-direction: row;
     gap: 16px;
     align-items: stretch;
+  }
+  .slotcol {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: none;
+  }
+  .droptarget {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+  }
+  .target {
+    padding: 3px 8px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-chip);
+    background: transparent;
+    color: var(--faint);
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .target.on {
+    border-color: var(--accent);
+    background: oklch(0.975 0.008 70);
+    color: var(--ink);
   }
   .slot {
     width: 148px;

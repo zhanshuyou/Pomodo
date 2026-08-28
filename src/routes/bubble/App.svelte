@@ -35,6 +35,10 @@
 
   const pet = $derived(PETS[app.pet.selected] ?? PETS[0]);
 
+  $effect(() => {
+    document.documentElement.dataset.accent = app.settings.accent;
+  });
+
   onMount(() => {
     void app.init();
     const un = onBubbleShow((payload) => {
@@ -59,7 +63,10 @@
   <div class="toast" bind:this={toast}>
     <Pet scale={3} slot="nag" alt={pet.name} />
     <div class="text">
-      <span class="title">{fire.name}</span>
+      <span class="title">
+        <span class="dot" style:background={fire.color}></span>
+        {fire.name}
+      </span>
       <span class="body">{fire.message}</span>
     </div>
     <button
@@ -115,6 +122,14 @@
       opacity: 1;
       transform: translateX(0);
     }
+  }
+  .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: 1px;
   }
   .text {
     display: flex;

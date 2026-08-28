@@ -8,7 +8,7 @@ import {
   elapsedPct,
   ringGradient,
   tone,
-} from "./theme";
+ bellyCellsFor } from "./theme";
 
 describe("ACCENTS", () => {
   it("holds the four accents from the spec", () => {
@@ -94,5 +94,14 @@ describe("elapsedPct", () => {
 
   it("returns zero for a zero-length phase rather than dividing by zero", () => {
     expect(elapsedPct(0, 0)).toBe(0);
+  });
+});
+
+describe("bellyCellsFor", () => {
+  it("mirrors Timer::belly_cells — round(progress * 10)", () => {
+    expect(bellyCellsFor(1500, 1500)).toBe(0);
+    expect(bellyCellsFor(1500, 750)).toBe(5);
+    expect(bellyCellsFor(1500, 0)).toBe(10);
+    expect(bellyCellsFor(0, 0)).toBe(0);
   });
 });

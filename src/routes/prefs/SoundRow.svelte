@@ -16,9 +16,24 @@
     void previewSound(sound);
   }
 
-  function onVolume(raw: string) {
+  function parseVolume(raw: string): number | null {
     const volume = Math.max(0, Math.min(100, Math.round(Number(raw))));
-    if (Number.isFinite(volume)) onchange({ ...value, volume });
+    return Number.isFinite(volume) ? volume : null;
+  }
+
+  function onVolume(raw: string) {
+    const volume = parseVolume(raw);
+    if (volume !== null) onchange({ ...value, volume });
+  }
+
+  /** Dragging the slider should be audible, but not ring on every pixel. */
+  const PREVIEW_DEBOUNCE_MS = 150;
+  let previewTimer: ReturnType<typeof setTimeout> | undefined;
+  function onVolumeInput(raw: string) {
+    const volume = parseVolume(raw);
+    if (volume === null) return;
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => void previewSound({ ...value, volume }), PREVIEW_DEBOUNCE_MS);
   }
 </script>
 
@@ -47,6 +62,7 @@
       aria-label="{label}音量"
       disabled={value.tone === "none"}
       value={value.volume}
+      oninput={(e) => onVolumeInput(e.currentTarget.value)}
       onchange={(e) => onVolume(e.currentTarget.value)}
     />
     <span class="pct">{value.tone === "none" ? "—" : `${value.volume}%`}</span>

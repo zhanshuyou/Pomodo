@@ -33,20 +33,36 @@ describe("fullscreen overlay", () => {
     host.remove();
   });
 
-  it("uses the design's mask colour and fills the viewport", () => {
-    const mask = host.querySelector(".mask") as HTMLElement;
-    expect(mask).not.toBeNull();
-  });
-
-  it("starts at the design's 02:41 countdown", () => {
-    expect(host.querySelector(".count")?.textContent).toBe("02:41");
-  });
-
-  it("falls back to the design's break line before any firing arrives", () => {
-    expect(host.querySelector(".line")?.textContent).toBe("站起来走走，看点远的东西");
+  it("shows nothing — no mask, no countdown — until a firing arrives", () => {
+    expect(host.querySelector(".mask")).toBeNull();
+    expect(host.querySelector(".count")).toBeNull();
   });
 
   it("offers a completion button and the escape hint", () => {
+    void unmount(component);
+    host.remove();
+    let deliver: ((p: unknown) => void) | undefined;
+    overlayIpc.onOverlayShow.mockImplementationOnce((cb) => {
+      deliver = cb;
+      return Promise.resolve(() => {});
+    });
+    ({ host, component } = render(Overlay));
+    deliver?.({
+      id: 1,
+      name: "收工前复盘",
+      message: "先夸自己一句，再写下明天要干的事。",
+      intensity: "fullscreen",
+      color: "oklch(0.68 0.1 300)",
+      mustComplete: false,
+      durationSecs: 300,
+    });
+    flushSync();
+    expect(host.querySelector(".count")?.textContent).toBe("05:00");
+    expect(host.querySelector(".line")?.textContent).toBe("先夸自己一句，再写下明天要干的事。");
+    expect(host.querySelector(".name")?.textContent?.trim()).toBe("收工前复盘");
+    expect((host.querySelector(".name .dot") as HTMLElement).style.background).toBe(
+      "oklch(0.68 0.1 300)",
+    );
     expect(host.querySelector(".done")?.textContent?.trim()).toBe("做完了");
     expect(host.querySelector(".escape")?.textContent).toBe("按 ⎋ 逃跑（它会记着）");
   });
@@ -115,6 +131,24 @@ describe("fullscreen overlay", () => {
   });
 
   it("sways the pet at scale 3", () => {
+    void unmount(component);
+    host.remove();
+    let deliver: ((p: unknown) => void) | undefined;
+    overlayIpc.onOverlayShow.mockImplementationOnce((cb) => {
+      deliver = cb;
+      return Promise.resolve(() => {});
+    });
+    ({ host, component } = render(Overlay));
+    deliver?.({
+      id: 3,
+      name: "站起来动一动",
+      message: "起来！",
+      intensity: "fullscreen",
+      color: "oklch(0.63 0.13 40)",
+      mustComplete: false,
+      durationSecs: 120,
+    });
+    flushSync();
     const canvas = host.querySelector("canvas") as HTMLCanvasElement;
     expect(canvas.width).toBe(48); // 16 x scale 3
     expect(canvas.className).toContain("pet--sway");

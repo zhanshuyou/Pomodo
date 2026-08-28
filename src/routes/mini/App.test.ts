@@ -9,6 +9,7 @@ const ipcSpies = vi.hoisted(() => ({
   ackReminder: vi.fn(async () => {}),
   ignoreReminder: vi.fn(async () => {}),
   snoozeReminder: vi.fn(async () => {}),
+  setMiniMode: vi.fn(async (_v: boolean) => {}),
 }));
 vi.mock("../../lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/ipc")>()),
@@ -98,6 +99,49 @@ describe("mini bar", () => {
     app.model.timer = { ...app.model.timer, running: false };
     flushSync();
     expect(host.querySelector(".act")?.getAttribute("aria-label")).toBe("继续");
+  });
+
+  // jsdom has no PointerEvent; a MouseEvent under the pointer name carries
+  // the button and coordinates the handlers read.
+  function pointer(type: string) {
+    return new MouseEvent(type, { bubbles: true, button: 0, clientX: 10, clientY: 10 });
+  }
+
+  function doubleClickBar() {
+    const bar = host.querySelector(".bar") as HTMLElement;
+    for (let i = 0; i < 2; i += 1) {
+      bar.dispatchEvent(pointer("pointerdown"));
+      bar.dispatchEvent(pointer("pointerup"));
+    }
+  }
+
+  it("double-clicking the bar goes back to the main window", () => {
+    ipcSpies.setMiniMode.mockClear();
+    app.model.settings.petFlags.clickInteract = true;
+    doubleClickBar();
+    expect(ipcSpies.setMiniMode).toHaveBeenCalledWith(false);
+  });
+
+  it("ignores the double-click when 点击互动 is off", () => {
+    ipcSpies.setMiniMode.mockClear();
+    app.model.settings.petFlags.clickInteract = false;
+    doubleClickBar();
+    expect(ipcSpies.setMiniMode).not.toHaveBeenCalled();
+    app.model.settings.petFlags.clickInteract = true;
+  });
+
+  it("colours the nudge name with the reminder's category colour", () => {
+    component.receiveNudge({
+      id: 1,
+      name: "喝水",
+      message: "你的杯子在喊你，它说它很空。",
+      intensity: "bubble",
+      color: "oklch(0.66 0.09 195)",
+    });
+    flushSync();
+    expect((host.querySelector(".nudge-name") as HTMLElement).style.color).toBe(
+      "oklch(0.66 0.09 195)",
+    );
   });
 
   it("swells to carry a reminder instead of opening a second window", () => {

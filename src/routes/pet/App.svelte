@@ -212,6 +212,7 @@
     class:nudging={!!nudge}
     class:dozing={anim === "sleep"}
   >
+    {#if nudge}<span class="dot" style:background={nudge.color}></span>{/if}
     {anim === "sleep" && !nudge ? "zzz…" : bubbleText}
     {#if nudge}
       <button
@@ -309,6 +310,14 @@
     line-height: 1.45;
     max-width: 220px;
     color: var(--ink);
+  }
+  .bubble .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: 1px;
   }
   .bubble.nudging {
     border: 1.5px solid var(--accent);

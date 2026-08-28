@@ -121,6 +121,22 @@ describe("SoundPane", () => {
     expect(ipc.setPhaseSound).toHaveBeenCalledWith("focusEnd", { tone: "chime", volume: 65 });
   });
 
+  it("previews while the volume slider is dragged, once it settles", () => {
+    vi.useFakeTimers();
+    const slider = row(host, "休息结束").querySelector<HTMLInputElement>('input[type="range"]');
+    if (!slider) throw new Error("no slider");
+    for (const v of ["35", "40", "45"]) {
+      slider.value = v;
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    expect(ipc.previewSound).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(200);
+    expect(ipc.previewSound).toHaveBeenCalledTimes(1);
+    expect(ipc.previewSound).toHaveBeenCalledWith({ tone: "woodblock", volume: 45 });
+    expect(ipc.setPhaseSound).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it("shows the shared reminder setting", () => {
     expect(pressed(row(host, "所有提醒"))).toEqual(["木鱼"]);
     expect(row(host, "所有提醒").querySelector(".pct")?.textContent).toBe("30%");

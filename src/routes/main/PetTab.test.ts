@@ -1,6 +1,7 @@
 import { flushSync, mount, unmount } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { FileDropEvent } from "../../lib/ipc";
 import { app } from "../../lib/state.svelte";
 import PetTab from "./PetTab.svelte";
 import StatsTab from "./StatsTab.svelte";
@@ -159,6 +160,18 @@ describe("PetTab", () => {
     flushSync();
     expect(host.querySelector(".slot.dragover")).toBeNull();
     expect(petIpc.importCustomPet).toHaveBeenCalledWith("focus", "/tmp/cat.png");
+  });
+
+  it("drops into whichever state is chosen under the slot", () => {
+    petIpc.importCustomPet.mockClear();
+    const tab = component as unknown as { receiveDrop: (e: FileDropEvent) => void };
+    [...host.querySelectorAll<HTMLButtonElement>(".target")]
+      .find((b) => b.textContent?.trim() === "休息")
+      ?.click();
+    flushSync();
+    expect(host.querySelector('.target[aria-checked="true"]')?.textContent?.trim()).toBe("休息");
+    tab.receiveDrop({ type: "drop", paths: ["/tmp/rest.gif"] });
+    expect(petIpc.importCustomPet).toHaveBeenCalledWith("rest", "/tmp/rest.gif");
   });
 
   it("refuses a dropped file of the wrong type with an inline message", () => {
