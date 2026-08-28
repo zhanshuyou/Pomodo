@@ -8,9 +8,11 @@ import RemindersPane from "./RemindersPane.svelte";
 const updateReminder = vi.hoisted(() =>
   vi.fn(async (_id: number, _patch: import("../../lib/ipc").ReminderPatch) => {}),
 );
+const addReminder = vi.hoisted(() => vi.fn(async (_template: string | null) => 42));
 vi.mock("../../lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/ipc")>()),
   updateReminder,
+  addReminder,
 }));
 
 /** A stand-in for what Rust's Reminder::seed produces, with spec copy. */
@@ -112,6 +114,31 @@ describe("RemindersPane", () => {
       "记一句想法",
     ]);
     expect(host.querySelector(".blank")?.textContent?.trim()).toBe("＋ 空白");
+  });
+
+  it("jumps the editor to the reminder a template chip just made", async () => {
+    addReminder.mockClear();
+    [...host.querySelectorAll<HTMLButtonElement>(".chips button")]
+      .find((b) => b.textContent?.trim() === "深呼吸")
+      ?.click();
+    expect(addReminder).toHaveBeenCalledWith("深呼吸");
+    await new Promise((r) => setTimeout(r, 0));
+    // Rust answers with the new id and the store refetches; mirror that here.
+    app.model.reminders = [
+      ...app.model.reminders,
+      seed(
+        42,
+        "深呼吸",
+        "oklch(0.68 0.1 300)",
+        "每 45 分钟 · 宠物提示 · 工作时段",
+        "吸——呼——别憋着，我在数呢。",
+        "自定义提醒：时间、文案、方式都可改。",
+        { intensity: "pet" },
+      ),
+    ];
+    flushSync();
+    const titles = [...host.querySelectorAll(".sectitle")].map((e) => e.textContent);
+    expect(titles).toContain("编辑「深呼吸」");
   });
 
   it("lists every reminder with its detail line", () => {

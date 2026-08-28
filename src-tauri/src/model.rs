@@ -6,6 +6,7 @@ use crate::core::desk::{self, PetMood, Placement};
 use crate::core::pet::PetState;
 use crate::core::reminder::{FireContext, Reminder};
 use crate::core::reminder_copy;
+use crate::core::sound::{SoundSetting, SoundTone};
 use crate::core::stats::Stats;
 use crate::core::timer::Timer;
 
@@ -70,6 +71,58 @@ pub struct Settings {
     /// and restarts until they ask for it back.
     #[serde(default = "yes")]
     pub pet_visible: bool,
+    /// What a finished focus / break rings with. Older files predate this
+    /// field, so it defaults rather than failing the load.
+    #[serde(default)]
+    pub phase_sounds: PhaseSounds,
+}
+
+/// Which end of the timer a sound setting belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PhaseEnd {
+    FocusEnd,
+    BreakEnd,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhaseSounds {
+    pub focus_end: SoundSetting,
+    pub break_end: SoundSetting,
+}
+
+impl Default for PhaseSounds {
+    fn default() -> Self {
+        // A break earned deserves a longer ring than a break over.
+        Self {
+            focus_end: SoundSetting {
+                tone: SoundTone::Chime,
+                volume: 40,
+            },
+            break_end: SoundSetting {
+                tone: SoundTone::Woodblock,
+                volume: 30,
+            },
+        }
+    }
+}
+
+impl PhaseSounds {
+    /// The sound for a phase that just ran out.
+    pub fn for_end_of(&self, phase: Phase) -> SoundSetting {
+        match phase {
+            Phase::Focus => self.focus_end,
+            Phase::ShortBreak | Phase::LongBreak => self.break_end,
+        }
+    }
+
+    pub fn set(&mut self, which: PhaseEnd, sound: SoundSetting) {
+        match which {
+            PhaseEnd::FocusEnd => self.focus_end = sound,
+            PhaseEnd::BreakEnd => self.break_end = sound,
+        }
+    }
 }
 
 fn yes() -> bool {
@@ -87,6 +140,7 @@ impl Default for Settings {
             rounds_per_cycle: 4,
             pet_flags: PetFlags::default(),
             pet_visible: true,
+            phase_sounds: PhaseSounds::default(),
         }
     }
 }
@@ -397,6 +451,30 @@ impl Model {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn phase_sounds_pick_by_the_phase_that_ended() {
+        let mut sounds = PhaseSounds::default();
+        assert_eq!(sounds.for_end_of(Phase::Focus).tone, SoundTone::Chime);
+        assert_eq!(
+            sounds.for_end_of(Phase::LongBreak).tone,
+            SoundTone::Woodblock
+        );
+        let beep = SoundSetting {
+            tone: SoundTone::Beep,
+            volume: 55,
+        };
+        sounds.set(PhaseEnd::BreakEnd, beep);
+        assert_eq!(sounds.for_end_of(Phase::ShortBreak), beep);
+        assert_eq!(sounds.for_end_of(Phase::Focus).tone, SoundTone::Chime);
+    }
+
+    #[test]
+    fn settings_without_phase_sounds_load_with_the_defaults() {
+        let json = r#"{"accent":"terracotta","tone":"playful","focusSecs":1500,"shortBreakSecs":300,"longBreakSecs":900,"roundsPerCycle":4,"petFlags":{"snapEdges":true,"clickInteract":true,"hideFullscreen":true,"sleepAnimation":false}}"#;
+        let settings: Settings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.phase_sounds, PhaseSounds::default());
+    }
 
     fn asleep_model() -> Model {
         Model {

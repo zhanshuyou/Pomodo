@@ -36,6 +36,10 @@ const FALLBACK: Model = {
       sleepAnimation: false,
     },
     petVisible: true,
+    phaseSounds: {
+      focusEnd: { tone: "chime", volume: 40 },
+      breakEnd: { tone: "woodblock", volume: 30 },
+    },
   },
   nextTaskId: 0,
   stats: { sessions: [], bestStreak: 0 },

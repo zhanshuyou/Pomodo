@@ -141,6 +141,13 @@ impl AppState {
         for change in &changes {
             let _ = app.emit(events::PHASE, change);
         }
+        // Only a phase that ran its course rings; a skip is the user's own
+        // doing and needs no announcing. A sleep that replays several phases
+        // at once rings only the last so wake-up is not a drum roll.
+        if let Some(change) = changes.iter().rev().find(|c| c.completed) {
+            let sound = self.with(|m| m.settings.phase_sounds.for_end_of(change.from));
+            crate::audio::play(sound);
+        }
         // An abandoned pause reset the phase without a phase change; the
         // windows still need to hear that stats and the countdown moved.
         if !changes.is_empty() || abandoned {

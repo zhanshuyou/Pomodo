@@ -264,7 +264,7 @@ pub fn clear_custom_pet(state: State<'_, AppState>, app: AppHandle, slot: String
 use serde::{Deserialize, Serialize};
 
 use crate::core::reminder::{Intensity, Reminder, Rules, Schedule};
-use crate::core::reminder_copy::Builtin;
+use crate::core::reminder_copy::{self, Builtin};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -281,26 +281,20 @@ pub struct ReminderPatch {
 }
 
 /// Template chips from the design's 从模板抓一个 row.
-fn template_color(name: &str) -> &'static str {
-    match name {
-        "站立" => "oklch(0.63 0.13 40)",
-        "喝水" => "oklch(0.66 0.09 195)",
-        "护眼" => "oklch(0.7 0.1 145)",
-        "深呼吸" => "oklch(0.68 0.1 300)",
-        "肩颈拉伸" => "oklch(0.7 0.12 60)",
-        "记一句想法" => "oklch(0.62 0.07 250)",
-        _ => "oklch(0.63 0.13 40)",
-    }
-}
-
 #[tauri::command]
 pub fn add_reminder(state: State<'_, AppState>, app: AppHandle, template: Option<String>) -> u32 {
     let id = state.with(|m| {
         let id = m.next_reminder_id;
         m.next_reminder_id += 1;
-        let name = template.clone().unwrap_or_else(|| "新提醒".to_string());
-        let color = template_color(&name).to_string();
-        m.reminders.push(Reminder::blank(id, name, color));
+        let reminder = match template.as_deref() {
+            Some(name) => Reminder::from_template(id, name, m.settings.tone),
+            None => Reminder::blank(
+                id,
+                "新提醒".to_string(),
+                reminder_copy::template_color("").to_string(),
+            ),
+        };
+        m.reminders.push(reminder);
         id
     });
     state.emit_changed(&app, Section::Reminders);
@@ -452,6 +446,20 @@ pub fn set_all_sounds(
         }
     });
     state.emit_changed(&app, Section::Reminders);
+    state.flush();
+}
+
+/// 声音 · 计时 — the tone a phase ends on. Only natural completions ring;
+/// 跳过 stays silent (`AppState::tick`).
+#[tauri::command]
+pub fn set_phase_sound(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    which: crate::model::PhaseEnd,
+    sound: crate::core::sound::SoundSetting,
+) {
+    state.with(|m| m.settings.phase_sounds.set(which, sound.clamped()));
+    state.emit_changed(&app, Section::Settings);
     state.flush();
 }
 

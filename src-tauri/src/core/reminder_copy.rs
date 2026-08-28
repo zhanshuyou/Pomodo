@@ -87,6 +87,55 @@ pub fn message(b: Builtin, tone: Tone) -> &'static str {
     }
 }
 
+/// The 「01 从模板抓一个」 chips. Three of them are the seeded builtins under a
+/// shorter name; the other three are templates of their own and carry their
+/// own first line so the chip produces something that actually rings.
+pub fn template_builtin(name: &str) -> Option<Builtin> {
+    match name {
+        "站立" => Some(Builtin::Stand),
+        "喝水" => Some(Builtin::Water),
+        "护眼" => Some(Builtin::Eyes),
+        _ => None,
+    }
+}
+
+/// Matches `REMINDER_COLORS` in `src/lib/theme.ts`.
+pub fn template_color(name: &str) -> &'static str {
+    match name {
+        "站立" => "oklch(0.63 0.13 40)",
+        "喝水" => "oklch(0.66 0.09 195)",
+        "护眼" => "oklch(0.7 0.1 145)",
+        "深呼吸" => "oklch(0.68 0.1 300)",
+        "肩颈拉伸" => "oklch(0.7 0.12 60)",
+        "记一句想法" => "oklch(0.62 0.07 250)",
+        _ => "oklch(0.63 0.13 40)",
+    }
+}
+
+pub fn template_message(name: &str, tone: Tone) -> Option<&'static str> {
+    Some(match name {
+        "深呼吸" => pick(
+            tone,
+            "做 3 次深呼吸：吸气 4 秒，呼气 6 秒。",
+            "停一下，跟我一起深呼吸三次？",
+            "吸——呼——别憋着，我在数呢。",
+        ),
+        "肩颈拉伸" => pick(
+            tone,
+            "活动肩颈 1 分钟，左右各转 5 圈。",
+            "肩膀酸了吧，转一转再继续。",
+            "你的脖子在向我求救，扭一扭。",
+        ),
+        "记一句想法" => pick(
+            tone,
+            "用一句话记录当前的想法或进展。",
+            "把刚才闪过的念头写下来吧。",
+            "灵感不记就跑了，快写一句！",
+        ),
+        _ => return None,
+    })
+}
+
 pub fn hint(b: Builtin, tone: Tone) -> &'static str {
     match b {
         Builtin::Stand => pick(
@@ -211,6 +260,21 @@ mod tests {
             hint(Builtin::Stand, Tone::Playful),
             "我不打断你，但下课钟一响我就扑上来。"
         );
+    }
+
+    #[test]
+    fn template_chips_resolve_to_builtins_or_their_own_copy() {
+        assert_eq!(template_builtin("喝水"), Some(Builtin::Water));
+        assert_eq!(template_builtin("深呼吸"), None);
+        for name in ["深呼吸", "肩颈拉伸", "记一句想法"] {
+            let a = template_message(name, Tone::Professional).unwrap();
+            let g = template_message(name, Tone::Gentle).unwrap();
+            let p = template_message(name, Tone::Playful).unwrap();
+            assert_ne!(a, g);
+            assert_ne!(g, p);
+        }
+        assert_eq!(template_message("站立", Tone::Playful), None);
+        assert_eq!(template_color("肩颈拉伸"), "oklch(0.7 0.12 60)");
     }
 
     #[test]

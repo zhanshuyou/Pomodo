@@ -58,6 +58,12 @@
     confirmingId = null;
   }
 
+  /** A chip should land you in the editor for what it just made. */
+  async function add(template: string | null) {
+    const id = await addReminder(template);
+    select(id);
+  }
+
   function confirmDelete(id: number) {
     // Editing follows the list, so hand the editor back to whatever survives.
     if (editId === id) editId = null;
@@ -173,9 +179,9 @@
     </div>
     <div class="chips">
       {#each TEMPLATES as t (t.name)}
-        <Chip dot={t.color} onclick={() => void addReminder(t.name)}>{t.name}</Chip>
+        <Chip dot={t.color} onclick={() => void add(t.name)}>{t.name}</Chip>
       {/each}
-      <button class="blank" type="button" onclick={() => void addReminder(null)}>
+      <button class="blank" type="button" onclick={() => void add(null)}>
         ＋ 空白
       </button>
     </div>

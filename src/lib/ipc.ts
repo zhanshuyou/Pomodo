@@ -37,7 +37,15 @@ export interface Settings {
   roundsPerCycle: number;
   petFlags: PetFlags;
   petVisible: boolean;
+  phaseSounds: PhaseSounds;
 }
+
+/** What a finished focus / break rings with; see `setPhaseSound`. */
+export interface PhaseSounds {
+  focusEnd: SoundSetting;
+  breakEnd: SoundSetting;
+}
+export type PhaseEnd = keyof PhaseSounds;
 
 export interface Model {
   timer: Timer;
@@ -267,6 +275,8 @@ export const previewSound = (sound: SoundSetting): Promise<void> =>
   IS_TAURI ? invoke<void>("preview_sound", { sound }) : Promise.resolve();
 export const setAllSounds = (sound: SoundSetting) =>
   invoke<void>("set_all_sounds", { sound });
+export const setPhaseSound = (which: PhaseEnd, sound: SoundSetting) =>
+  invoke<void>("set_phase_sound", { which, sound });
 
 export interface Reminder {
   id: number;

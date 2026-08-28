@@ -233,7 +233,26 @@ impl Reminder {
         r
     }
 
-    /// A reminder the user created from a template chip or from ＋ 空白.
+    /// A reminder created from one of the 「01 从模板抓一个」 chips. The chips
+    /// that name a builtin get the full seeded reminder (tone-aware copy, the
+    /// right schedule and intensity); the rest get a blank with a first line,
+    /// because a reminder with nothing to say never fires.
+    pub fn from_template(id: u32, name: &str, tone: Tone) -> Self {
+        if let Some(builtin) = reminder_copy::template_builtin(name) {
+            return Self::seed(builtin, id, tone);
+        }
+        let mut r = Self::blank(
+            id,
+            name.to_string(),
+            reminder_copy::template_color(name).to_string(),
+        );
+        if let Some(message) = reminder_copy::template_message(name, tone) {
+            r.message = message.to_string();
+        }
+        r
+    }
+
+    /// A reminder the user created from ＋ 空白.
     pub fn blank(id: u32, name: String, color: String) -> Self {
         let schedule = Schedule::Every { minutes: 45 };
         let mut r = Self {
@@ -533,6 +552,35 @@ mod tests {
         let mut r = water();
         r.tick(1800, &ctx());
         assert_eq!(r.remaining_secs, 1800);
+    }
+
+    #[test]
+    fn a_builtin_template_chip_creates_the_seeded_reminder() {
+        let r = Reminder::from_template(7, "喝水", Tone::Gentle);
+        assert_eq!(r.builtin, Some(Builtin::Water));
+        assert_eq!(r.name, "喝水");
+        assert_eq!(
+            r.message,
+            reminder_copy::message(Builtin::Water, Tone::Gentle)
+        );
+        assert_eq!(r.schedule, Schedule::Every { minutes: 30 });
+        assert_eq!(r.intensity, Intensity::Bubble);
+    }
+
+    #[test]
+    fn a_non_builtin_template_chip_has_a_first_line_and_fires() {
+        let mut r = Reminder::from_template(8, "深呼吸", Tone::Playful);
+        assert_eq!(r.builtin, None);
+        assert_eq!(r.name, "深呼吸");
+        assert!(!r.message.is_empty());
+        assert_eq!(r.color, "oklch(0.68 0.1 300)");
+        assert_eq!(r.tick(45 * 60, &ctx()), TickOutcome::Fire(Intensity::Pet));
+    }
+
+    #[test]
+    fn a_blank_reminder_stays_silent_until_it_has_something_to_say() {
+        let mut r = Reminder::blank(9, "新提醒".into(), "oklch(0.63 0.13 40)".into());
+        assert_eq!(r.tick(45 * 60, &ctx()), TickOutcome::Idle);
     }
 
     #[test]
