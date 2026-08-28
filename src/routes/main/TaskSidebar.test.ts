@@ -9,6 +9,7 @@ const ipc = vi.hoisted(() => ({
   renameTask: vi.fn(async () => {}),
   reorderTasks: vi.fn(async () => {}),
   setTaskEstimate: vi.fn(async () => {}),
+  setActiveTask: vi.fn(async (_id: number | null) => {}),
 }));
 vi.mock("../../lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/ipc")>()),
@@ -53,6 +54,20 @@ describe("TaskSidebar task management", () => {
     expect(host.querySelector(".empty")).toBeNull();
     host.querySelector<HTMLInputElement>(".add-input")!.dispatchEvent(key("Escape"));
     flushSync();
+  });
+
+  it("lets go of the active task when it is picked again", () => {
+    ipc.setActiveTask.mockClear();
+    app.model.timer.activeTask = null;
+    flushSync();
+    const rows = () => [...host.querySelectorAll<HTMLElement>(".task")];
+    rows()[0].click();
+    expect(ipc.setActiveTask).toHaveBeenLastCalledWith(app.model.tasks[0].id);
+    app.model.timer.activeTask = app.model.tasks[0].id;
+    flushSync();
+    rows()[0].click();
+    expect(ipc.setActiveTask).toHaveBeenLastCalledWith(null);
+    app.model.timer.activeTask = null;
   });
 
   it("draws one pip per estimated pomodoro, filled up to spent", () => {

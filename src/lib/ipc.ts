@@ -47,19 +47,20 @@ export interface PhaseSounds {
 }
 export type PhaseEnd = keyof PhaseSounds;
 
+/**
+ * The subset of Rust's `Model` the views read. Rust serialises more (id
+ * counters, raw sessions, window placements); anything not listed here is
+ * simply ignored on the way in.
+ */
 export interface Model {
   timer: Timer;
   tasks: Task[];
   settings: Settings;
-  nextTaskId: number;
-  stats: { sessions: unknown[]; bestStreak: number };
   pet: PetState;
   reminders: Reminder[];
   body: BodyCounters;
   deepWork: boolean;
-  nextReminderId: number;
   miniEnabled: boolean;
-  miniPlacement: { x: number; y: number } | null;
   /** Derived in Rust from timer / nudge / idle time; see `onPetState`. */
   petMood: PetMood;
 }
@@ -76,6 +77,8 @@ export interface TickPayload {
   running: boolean;
   round: number;
   bellyCells: number;
+  /** 省电模式 is on; see AppStore.still. */
+  lowPower: boolean;
 }
 
 export interface PhaseChange {
@@ -302,6 +305,8 @@ export interface Reminder {
   name: string;
   color: string;
   detail: string;
+  /** The authored third clause of `detail`; the rest is derived. */
+  note: string;
   message: string;
   hint: string;
   messageEdited: boolean;
@@ -340,6 +345,9 @@ export interface FirePayload {
 
 export interface ReminderPatch {
   name?: string;
+  color?: string;
+  /** The detail line's third clause. */
+  note?: string;
   message?: string;
   /** Shorthand for `schedule: { kind: "every", minutes }`. */
   intervalMinutes?: number;
@@ -350,8 +358,9 @@ export interface ReminderPatch {
   rules?: Rules;
 }
 
-export const addReminder = (template: string | null) =>
-  invoke<number>("add_reminder", { template });
+/** `color` paints a non-builtin template; builtin templates keep their own. */
+export const addReminder = (template: string | null, color: string | null = null) =>
+  invoke<number>("add_reminder", { template, color });
 export const updateReminder = (id: number, patch: ReminderPatch) =>
   invoke<void>("update_reminder", { id, patch });
 export const toggleReminder = (id: number) => invoke<void>("toggle_reminder", { id });
@@ -367,8 +376,6 @@ export const snoozeOverlay = (id: number, minutes: number = SNOOZE_MINUTES) =>
 export const setDeepWork = (value: boolean) => invoke<void>("set_deep_work", { value });
 export const openPrefs = () => invoke<void>("open_prefs");
 
-export const onReminderFire = (cb: (p: FirePayload) => void): Promise<UnlistenFn> =>
-  subscribe<FirePayload>("reminder:fire", cb);
 
 export interface UpNextItem {
   id: number;
@@ -385,7 +392,6 @@ export interface TodaySummary {
 
 export const upNext = () => invoke<UpNextItem[]>("up_next");
 export const todaySummary = () => invoke<TodaySummary>("today_summary");
-export const quitApp = () => invoke<void>("quit_app");
 export const showMain = () => invoke<void>("show_main");
 
 export const setMiniMode = (value: boolean) =>
@@ -404,7 +410,6 @@ export const setMiniPlacement = (x: number, y: number) =>
 
 export const setPetPlacement = (x: number, y: number) =>
   invoke<void>("set_pet_placement", { x, y });
-export const showPet = () => invoke<void>("show_pet");
 export const hidePet = () => invoke<void>("hide_pet");
 export const hideBubble = () => invoke<void>("hide_bubble");
 export const setPetVisible = (value: boolean) =>

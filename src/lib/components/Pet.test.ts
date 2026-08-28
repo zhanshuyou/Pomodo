@@ -76,4 +76,22 @@ describe("Pet", () => {
     expect(img.style.width).toBe("80px");
     expect(img.style.height).toBe("120px");
   });
+
+  it("holds still while the page is hidden or the OS is saving power", () => {
+    render({ scale: 4, anim: "bob" });
+    expect(host.querySelector(".frame")?.className).toContain("frame--bob");
+
+    app.pageVisible = false;
+    flushSync();
+    expect(host.querySelector(".frame")?.className).toContain("frame--none");
+
+    app.pageVisible = true;
+    app.lowPower = true;
+    flushSync();
+    expect(host.querySelector(".frame")?.className).toContain("frame--none");
+
+    app.lowPower = false;
+    flushSync();
+    expect(host.querySelector(".frame")?.className).toContain("frame--bob");
+  });
 });

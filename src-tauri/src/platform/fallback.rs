@@ -27,6 +27,10 @@ impl PlatformWindows for Fallback {
         false
     }
 
+    fn low_power_mode(&self) -> bool {
+        false
+    }
+
     fn microphone_in_use(&self) -> bool {
         false
     }

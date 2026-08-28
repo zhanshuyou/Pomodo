@@ -41,8 +41,6 @@ const FALLBACK: Model = {
       breakEnd: { tone: "woodblock", volume: 30 },
     },
   },
-  nextTaskId: 0,
-  stats: { sessions: [], bestStreak: 0 },
   pet: {
     selected: 0,
     lifetimePomodoros: 0,
@@ -65,9 +63,7 @@ const FALLBACK: Model = {
     day: "",
   },
   deepWork: false,
-  nextReminderId: 0,
   miniEnabled: false,
-  miniPlacement: null,
   petMood: "focus",
 };
 
@@ -75,6 +71,10 @@ class AppStore {
   model = $state<Model>(FALLBACK);
   ready = $state(false);
   bellyCells = $state(0);
+  /** From the last tick — the OS is in 省电模式. */
+  lowPower = $state(false);
+  /** document.visibilityState; a hidden or fully occluded window reports false. */
+  pageVisible = $state(true);
   summary = $state<StatsSummary | null>(null);
 
   #unlisteners: UnlistenFn[] = [];
@@ -122,6 +122,8 @@ class AppStore {
     if (this.#started) return;
     this.#started = true;
 
+    this.#watchVisibility();
+
     if (!IS_TAURI) {
       // gallery.html and vitest run outside Tauri; keep the fallback model.
       this.ready = true;
@@ -137,6 +139,7 @@ class AppStore {
         this.model.timer.running = p.running;
         this.model.timer.round = p.round;
         this.bellyCells = p.bellyCells;
+        this.lowPower = p.lowPower;
       }),
       // A phase boundary can credit a task and change settings-derived durations,
       // so refetch rather than trying to patch every dependent field by hand.
@@ -172,6 +175,28 @@ class AppStore {
   async refreshStats(): Promise<void> {
     if (!IS_TAURI) return;
     this.summary = await statsSummary();
+  }
+
+  /**
+   * An always-on-top pet that keeps bobbing behind a fullscreen app, or on a
+   * battery-saving laptop, is wasted work. `still` is what the pet components
+   * consult; it holds the sprite in place without touching the timer.
+   */
+  get still(): boolean {
+    return !this.pageVisible || this.lowPower;
+  }
+
+  #onVisibility = () => {
+    this.pageVisible = document.visibilityState !== "hidden";
+  };
+
+  #watchVisibility(): void {
+    if (typeof document === "undefined") return;
+    this.#onVisibility();
+    document.addEventListener("visibilitychange", this.#onVisibility);
+    this.#unlisteners.push(() =>
+      document.removeEventListener("visibilitychange", this.#onVisibility),
+    );
   }
 
   dispose(): void {

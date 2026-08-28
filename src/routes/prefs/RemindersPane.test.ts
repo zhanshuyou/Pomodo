@@ -31,6 +31,7 @@ function seed(
     name,
     color,
     detail,
+    note: "",
     message,
     hint,
     messageEdited: false,
@@ -121,7 +122,7 @@ describe("RemindersPane", () => {
     [...host.querySelectorAll<HTMLButtonElement>(".chips button")]
       .find((b) => b.textContent?.trim() === "深呼吸")
       ?.click();
-    expect(addReminder).toHaveBeenCalledWith("深呼吸");
+    expect(addReminder).toHaveBeenCalledWith("深呼吸", "oklch(0.68 0.1 300)");
     await new Promise((r) => setTimeout(r, 0));
     // Rust answers with the new id and the store refetches; mirror that here.
     app.model.reminders = [
@@ -139,6 +140,26 @@ describe("RemindersPane", () => {
     flushSync();
     const titles = [...host.querySelectorAll(".sectitle")].map((e) => e.textContent);
     expect(titles).toContain("编辑「深呼吸」");
+  });
+
+  it("offers the six category colours and patches the chosen one", () => {
+    updateReminder.mockClear();
+    const swatches = [...host.querySelectorAll<HTMLButtonElement>(".swatch")];
+    expect(swatches).toHaveLength(6);
+    expect(host.querySelector('.swatch[aria-checked="true"]')?.getAttribute("aria-label")).toBe(
+      "oklch(0.63 0.13 40)",
+    );
+    swatches.find((b) => b.getAttribute("aria-label") === "oklch(0.62 0.07 250)")?.click();
+    expect(updateReminder).toHaveBeenCalledWith(0, { color: "oklch(0.62 0.07 250)" });
+  });
+
+  it("edits the detail line's note", () => {
+    updateReminder.mockClear();
+    const note = host.querySelector<HTMLInputElement>('input[aria-label="提醒备注"]');
+    if (!note) throw new Error("no note input");
+    note.value = "仅工作日";
+    note.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(updateReminder).toHaveBeenCalledWith(0, { note: "仅工作日" });
   });
 
   it("lists every reminder with its detail line", () => {

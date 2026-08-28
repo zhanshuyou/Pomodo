@@ -15,6 +15,9 @@
 
   let { scale = 8, anim = "none", slot = "auto", alt }: Props = $props();
 
+  /** Occluded window or 省电模式: hold the pose; see AppStore.still. */
+  const motion = $derived(app.still ? "none" : anim);
+
   const builtin = $derived(PETS[app.pet.selected] ?? PETS[0]);
   const box = $derived(SPRITE_SIZE * scale);
   const slotKey = $derived(
@@ -37,7 +40,7 @@
 
 {#if path}
   <div
-    class="frame frame--{anim}"
+    class="frame frame--{motion}"
     style:width="{box}px"
     style:height="{box}px"
     role="img"
@@ -56,7 +59,7 @@
     map={builtin.map}
     body={builtin.body}
     {scale}
-    {anim}
+    anim={motion}
     alt={alt ?? builtin.name}
   />
 {/if}

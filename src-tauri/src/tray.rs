@@ -90,13 +90,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
                     return;
                 };
                 let next = state.with(|m| !m.settings.pet_visible);
-                state.with(|m| m.settings.pet_visible = next);
-                state.flush();
-                if next {
-                    let _ = windows::ensure_pet(app);
-                } else {
-                    windows::hide_pet(app);
-                }
+                crate::commands::apply_pet_visible(&state, app, next);
             }
             "toggle_mini" => {
                 let _ = windows::toggle_mini(app);

@@ -21,6 +21,8 @@ pub trait PlatformWindows: Send + Sync {
     fn fullscreen_app_covering(&self, screen: ScreenRect) -> bool;
     /// True when some application is capturing audio input — a meeting or a call.
     fn microphone_in_use(&self) -> bool;
+    /// 省电模式 — the pet stops bobbing while it is on.
+    fn low_power_mode(&self) -> bool;
 }
 
 #[cfg(target_os = "macos")]

@@ -270,6 +270,9 @@ use crate::core::reminder_copy::{self, Builtin};
 #[serde(rename_all = "camelCase")]
 pub struct ReminderPatch {
     pub name: Option<String>,
+    pub color: Option<String>,
+    /// The detail line's third clause; empty drops the clause.
+    pub note: Option<String>,
     pub message: Option<String>,
     /// Older shorthand for `schedule: Every { minutes }`; `schedule` wins if both are set.
     pub interval_minutes: Option<u32>,
@@ -282,16 +285,21 @@ pub struct ReminderPatch {
 
 /// Template chips from the design's 从模板抓一个 row.
 #[tauri::command]
-pub fn add_reminder(state: State<'_, AppState>, app: AppHandle, template: Option<String>) -> u32 {
+pub fn add_reminder(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    template: Option<String>,
+    color: Option<String>,
+) -> u32 {
     let id = state.with(|m| {
         let id = m.next_reminder_id;
         m.next_reminder_id += 1;
         let reminder = match template.as_deref() {
-            Some(name) => Reminder::from_template(id, name, m.settings.tone),
+            Some(name) => Reminder::from_template(id, name, color.as_deref(), m.settings.tone),
             None => Reminder::blank(
                 id,
                 "新提醒".to_string(),
-                reminder_copy::template_color("").to_string(),
+                reminder_copy::DEFAULT_COLOR.to_string(),
             ),
         };
         m.reminders.push(reminder);
@@ -314,6 +322,12 @@ pub fn update_reminder(state: State<'_, AppState>, app: AppHandle, id: u32, patc
         };
         if let Some(name) = patch.name {
             r.name = name;
+        }
+        if let Some(color) = patch.color {
+            r.color = color;
+        }
+        if let Some(note) = patch.note {
+            r.note = note.trim().to_string();
         }
         if let Some(message) = patch.message {
             r.message = message;
@@ -579,12 +593,6 @@ pub fn today_summary(state: State<'_, AppState>) -> TodaySummary {
 }
 
 #[tauri::command]
-pub fn quit_app(state: State<'_, AppState>, app: AppHandle) {
-    state.flush();
-    app.exit(0);
-}
-
-#[tauri::command]
 pub fn show_main(app: AppHandle) -> Result<(), String> {
     crate::windows::show_main(&app).map_err(|e| e.to_string())
 }
@@ -688,12 +696,6 @@ pub fn set_pet_placement(state: State<'_, AppState>, app: AppHandle, x: f64, y: 
     state.flush();
 }
 
-#[tauri::command]
-pub fn show_pet(state: State<'_, AppState>, app: AppHandle) -> Result<(), String> {
-    set_pet_visible(state, app.clone(), true);
-    crate::windows::ensure_pet(&app).map_err(|e| e.to_string())
-}
-
 /// Dismiss the desktop pet. The choice persists, so neither the per-tick
 /// visibility sync nor the next launch brings it back uninvited.
 #[tauri::command]
@@ -704,13 +706,18 @@ pub fn hide_pet(state: State<'_, AppState>, app: AppHandle) {
 
 #[tauri::command]
 pub fn set_pet_visible(state: State<'_, AppState>, app: AppHandle, value: bool) {
+    apply_pet_visible(&state, &app, value);
+}
+
+/// Shared with the tray's 显示宠物 item, which has no `State` extractor.
+pub fn apply_pet_visible(state: &AppState, app: &AppHandle, value: bool) {
     state.with(|m| m.settings.pet_visible = value);
-    state.emit_changed(&app, Section::Settings);
+    state.emit_changed(app, Section::Settings);
     state.flush();
     if value {
-        let _ = crate::windows::ensure_pet(&app);
+        let _ = crate::windows::ensure_pet(app);
     } else {
-        crate::windows::hide_pet(&app);
+        crate::windows::hide_pet(app);
     }
 }
 

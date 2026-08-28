@@ -60,8 +60,8 @@
   }
 
   /** A chip should land you in the editor for what it just made. */
-  async function add(template: string | null) {
-    const id = await addReminder(template);
+  async function add(template: string | null, color: string | null = null) {
+    const id = await addReminder(template, color);
     select(id);
   }
 
@@ -180,7 +180,7 @@
     </div>
     <div class="chips">
       {#each TEMPLATES as t (t.name)}
-        <Chip dot={t.color} onclick={() => void add(t.name)}>{t.name}</Chip>
+        <Chip dot={t.color} onclick={() => void add(t.name, t.color)}>{t.name}</Chip>
       {/each}
       <button class="blank" type="button" onclick={() => void add(null)}>
         ＋ 空白
@@ -282,6 +282,36 @@
         aria-label="提醒名称"
         value={editing.name}
         onchange={(e) => onName(e.currentTarget.value)}
+      />
+    </div>
+
+    <div class="field">
+      <span class="flabel">什么颜色</span>
+      <div class="swatches" role="radiogroup" aria-label="提醒颜色">
+        {#each Object.values(REMINDER_COLORS) as color (color)}
+          <button
+            class="swatch"
+            class:on={editing.color === color}
+            type="button"
+            role="radio"
+            aria-checked={editing.color === color}
+            aria-label={color}
+            style:background={color}
+            onclick={() => void updateReminder(editing.id, { color })}
+          ></button>
+        {/each}
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="flabel">列表里的备注</span>
+      <input
+        class="name"
+        type="text"
+        aria-label="提醒备注"
+        placeholder="例如：计入每日 8 杯"
+        value={editing.note}
+        onchange={(e) => void updateReminder(editing.id, { note: e.currentTarget.value })}
       />
     </div>
 
@@ -832,6 +862,22 @@
     font: inherit;
     font-size: 13px;
     color: var(--ink);
+  }
+  .swatches {
+    display: flex;
+    gap: 8px;
+  }
+  .swatch {
+    width: 22px;
+    height: 22px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .swatch.on {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 2px var(--card) inset;
   }
   .warn {
     font-size: 12px;

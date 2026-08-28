@@ -9,7 +9,6 @@ import {
   onPetNudge,
   onPetState,
   onPhase,
-  onReminderFire,
   onTick,
 } from "./ipc";
 
@@ -27,7 +26,6 @@ describe("event subscriptions outside Tauri", () => {
     onTick,
     onPhase,
     onChanged,
-    onReminderFire,
     onPetNudge,
     onPetState,
     onMiniNudge,

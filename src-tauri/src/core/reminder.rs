@@ -237,14 +237,14 @@ impl Reminder {
     /// that name a builtin get the full seeded reminder (tone-aware copy, the
     /// right schedule and intensity); the rest get a blank with a first line,
     /// because a reminder with nothing to say never fires.
-    pub fn from_template(id: u32, name: &str, tone: Tone) -> Self {
+    pub fn from_template(id: u32, name: &str, color: Option<&str>, tone: Tone) -> Self {
         if let Some(builtin) = reminder_copy::template_builtin(name) {
             return Self::seed(builtin, id, tone);
         }
         let mut r = Self::blank(
             id,
             name.to_string(),
-            reminder_copy::template_color(name).to_string(),
+            color.unwrap_or(reminder_copy::DEFAULT_COLOR).to_string(),
         );
         if let Some(message) = reminder_copy::template_message(name, tone) {
             r.message = message.to_string();
@@ -556,7 +556,7 @@ mod tests {
 
     #[test]
     fn a_builtin_template_chip_creates_the_seeded_reminder() {
-        let r = Reminder::from_template(7, "喝水", Tone::Gentle);
+        let r = Reminder::from_template(7, "喝水", None, Tone::Gentle);
         assert_eq!(r.builtin, Some(Builtin::Water));
         assert_eq!(r.name, "喝水");
         assert_eq!(
@@ -569,7 +569,8 @@ mod tests {
 
     #[test]
     fn a_non_builtin_template_chip_has_a_first_line_and_fires() {
-        let mut r = Reminder::from_template(8, "深呼吸", Tone::Playful);
+        let mut r =
+            Reminder::from_template(8, "深呼吸", Some("oklch(0.68 0.1 300)"), Tone::Playful);
         assert_eq!(r.builtin, None);
         assert_eq!(r.name, "深呼吸");
         assert!(!r.message.is_empty());

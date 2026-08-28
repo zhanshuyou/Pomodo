@@ -24,6 +24,7 @@ function reminder(id: number, sound: SoundSetting): Reminder {
     name: `r${id}`,
     color: "oklch(0.63 0.13 40)",
     detail: "",
+    note: "",
     message: "x",
     hint: "",
     messageEdited: true,

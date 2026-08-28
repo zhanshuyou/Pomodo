@@ -33,7 +33,7 @@ rodio = { version = "0.22.2", default-features = false, features = ["playback"] 
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit = { version = "0.3", features = ["NSScreen", "NSWindow", "NSApplication", "NSGraphics", "NSResponder", "NSView"] }
-objc2-foundation = "0.3"
+objc2-foundation = { version = "0.3", features = ["NSProcessInfo"] }
 objc2-core-foundation = { version = "0.3", features = ["CFArray", "CFBase", "CFDictionary", "CFNumber", "CFString"] }
 objc2-core-graphics = { version = "0.3", features = ["CGGeometry", "CGWindow"] }
 coreaudio-sys = "0.2"

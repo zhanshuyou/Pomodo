@@ -105,12 +105,14 @@ impl AppState {
     }
 
     fn tick_payload(&self) -> TickPayload {
+        let low_power = crate::platform::platform().low_power_mode();
         self.with(|m| TickPayload {
             remaining_secs: m.timer.remaining_secs,
             phase: m.timer.phase,
             running: m.timer.running,
             round: m.timer.round,
             belly_cells: m.timer.belly_cells(&m.settings),
+            low_power,
         })
     }
 
@@ -230,9 +232,8 @@ impl AppState {
             self.with(|m| m.reminders.iter().map(|r| (r.id, r.rules.sound)).collect());
 
         for payload in fires {
-            // Every window hears the raw event; the surface that renders it depends
-            // on the intensity the engine chose for this particular firing.
-            let _ = app.emit(events::REMINDER_FIRE, payload.clone());
+            // The surface that renders a firing depends on the intensity the
+            // engine chose for it; each window listens to its own event.
             if let Some((_, sound)) = sounds.iter().find(|(id, _)| *id == payload.id) {
                 crate::audio::play(*sound);
             }

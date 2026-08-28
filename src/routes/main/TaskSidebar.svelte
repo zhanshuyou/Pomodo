@@ -22,6 +22,7 @@
     toggleTask,
   } from "../../lib/ipc";
   import { app } from "../../lib/state.svelte";
+  import { REMINDER_COLORS } from "../../lib/theme";
 
   /** The artboard draws at most three pips, so that is the ceiling here too. */
   const MAX_PIPS = 3;
@@ -111,19 +112,25 @@
     }
   }
 
+  /** Picking the task already in focus lets it go — there is no other way to
+   *  focus on nothing in particular. */
+  function pick(id: number) {
+    return setActiveTask(app.timer.activeTask === id ? null : id);
+  }
+
   // Driven by the reminder engine: acknowledging 喝水 / 站立 moves these.
   const bodyStats = $derived([
     {
       name: "喝水",
       value: `${app.body.waterCups} / ${app.body.waterGoal} 杯`,
       pct: (app.body.waterCups / Math.max(1, app.body.waterGoal)) * 100,
-      color: "oklch(0.66 0.09 195)",
+      color: REMINDER_COLORS.water,
     },
     {
       name: "站立",
       value: `${app.body.stands} / ${app.body.standGoal} 次`,
       pct: (app.body.stands / Math.max(1, app.body.standGoal)) * 100,
-      color: "oklch(0.63 0.13 40)",
+      color: REMINDER_COLORS.stand,
     },
     {
       name: "久坐最长",
@@ -132,7 +139,7 @@
         100,
         (app.body.longestSitMins / Math.max(1, app.body.sitGoalMins)) * 100,
       ),
-      color: "oklch(0.7 0.12 60)",
+      color: REMINDER_COLORS.stretch,
     },
   ]);
 
@@ -161,8 +168,8 @@
         class:selected={app.timer.activeTask === task.id && !task.done}
         role="button"
         tabindex="0"
-        onclick={() => void setActiveTask(task.id)}
-        onkeydown={(e) => e.key === "Enter" && void setActiveTask(task.id)}
+        onclick={() => void pick(task.id)}
+        onkeydown={(e) => e.key === "Enter" && void pick(task.id)}
       >
         <button
           class="box"

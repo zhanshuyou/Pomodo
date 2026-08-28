@@ -99,18 +99,8 @@ pub fn template_builtin(name: &str) -> Option<Builtin> {
     }
 }
 
-/// Matches `REMINDER_COLORS` in `src/lib/theme.ts`.
-pub fn template_color(name: &str) -> &'static str {
-    match name {
-        "站立" => "oklch(0.63 0.13 40)",
-        "喝水" => "oklch(0.66 0.09 195)",
-        "护眼" => "oklch(0.7 0.1 145)",
-        "深呼吸" => "oklch(0.68 0.1 300)",
-        "肩颈拉伸" => "oklch(0.7 0.12 60)",
-        "记一句想法" => "oklch(0.62 0.07 250)",
-        _ => "oklch(0.63 0.13 40)",
-    }
-}
+/// What a reminder is painted when nobody said otherwise (＋ 空白).
+pub const DEFAULT_COLOR: &str = "oklch(0.63 0.13 40)";
 
 pub fn template_message(name: &str, tone: Tone) -> Option<&'static str> {
     Some(match name {
@@ -328,7 +318,6 @@ mod tests {
             assert_ne!(g, p);
         }
         assert_eq!(template_message("站立", Tone::Playful), None);
-        assert_eq!(template_color("肩颈拉伸"), "oklch(0.7 0.12 60)");
     }
 
     #[test]

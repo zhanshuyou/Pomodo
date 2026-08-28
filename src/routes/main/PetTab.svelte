@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Chip from "../../lib/components/Chip.svelte";
+  import PetFlagChips from "../../lib/components/PetFlagChips.svelte";
   import Pet from "../../lib/components/Pet.svelte";
   import PetCanvas from "../../lib/components/PetCanvas.svelte";
   import {
     PET_IMAGE_EXTENSIONS,
-    type PetFlags,
     type PetSlot,
     clearCustomPet,
     importCustomPet,
@@ -13,7 +13,6 @@
     petImageSrc,
     pickPetImage,
     selectPet,
-    setPetFlag,
     setUseCustomPet,
   } from "../../lib/ipc";
   import { LOCKED_BODY, PETS } from "../../lib/sprites";
@@ -32,12 +31,6 @@
     if (!ok) selectError = `还没解锁，再攒 ${unlockAt(id) - app.pet.lifetimePomodoros} 个番茄`;
   }
 
-  const FLAGS: { key: keyof PetFlags; name: string }[] = [
-    { key: "snapEdges", name: "贴边吸附" },
-    { key: "clickInteract", name: "点击互动" },
-    { key: "hideFullscreen", name: "全屏时隐藏" },
-    { key: "sleepAnimation", name: "睡眠动画" },
-  ];
 
   const SLOTS: { key: PetSlot; label: string }[] = [
     { key: "focus", label: "专注" },
@@ -223,19 +216,7 @@
     </section>
 
     <section>
-      <div class="chiprow">
-        {#each FLAGS as flag (flag.key)}
-          <Chip
-            selected={app.settings.petFlags[flag.key]}
-            dot={app.settings.petFlags[flag.key]
-              ? "var(--accent)"
-              : "oklch(0.85 0.008 70)"}
-            onclick={() => void setPetFlag(flag.key, !app.settings.petFlags[flag.key])}
-          >
-            {flag.name}
-          </Chip>
-        {/each}
-      </div>
+      <PetFlagChips />
     </section>
   </div>
 </div>

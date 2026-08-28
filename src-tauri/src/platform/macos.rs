@@ -96,6 +96,10 @@ impl PlatformWindows for MacOs {
         foreign_window_fills(screen)
     }
 
+    fn low_power_mode(&self) -> bool {
+        objc2_foundation::NSProcessInfo::processInfo().isLowPowerModeEnabled()
+    }
+
     fn microphone_in_use(&self) -> bool {
         microphone::is_running_somewhere()
     }

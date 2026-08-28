@@ -7,7 +7,6 @@ use crate::model::Phase;
 pub const TICK: &str = "timer:tick";
 pub const PHASE: &str = "timer:phase";
 pub const CHANGED: &str = "model:changed";
-pub const REMINDER_FIRE: &str = "reminder:fire";
 pub const PET_STATE: &str = "pet:state";
 
 #[derive(Debug, Clone, Serialize)]
@@ -18,6 +17,8 @@ pub struct TickPayload {
     pub running: bool,
     pub round: u8,
     pub belly_cells: u8,
+    /// The OS is in 省电模式; the pet windows hold their animation.
+    pub low_power: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
